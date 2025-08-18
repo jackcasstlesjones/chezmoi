@@ -1,0 +1,75 @@
+/* Nord theme for wofi with transparency */
+
+window {
+    margin: 0px;
+    border: 2px solid #ebcb8b;
+    border-radius: 12px;
+    background-color: rgba(46, 52, 64, 0.95);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 14px;
+}
+
+#input {
+    margin: 8px;
+    padding: 12px;
+    color: #d8dee9;
+    background-color: rgba(59, 66, 82, 0.8);
+    border: 1px solid #4c566a;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+#input:focus {
+    border: 1px solid #81a1c1;
+    outline: none;
+}
+
+#inner-box {
+    margin: 8px;
+    padding: 0px;
+    background-color: transparent;
+}
+
+#outer-box {
+    margin: 0px;
+    padding: 0px;
+    background-color: transparent;
+}
+
+#scroll {
+    margin: 0px;
+    padding: 0px;
+}
+
+#text {
+    margin: 4px;
+    padding: 4px;
+    color: #d8dee9;
+}
+
+#entry {
+    margin: 2px;
+    padding: 8px;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #d8dee9;
+}
+
+#entry:selected {
+    background-color: rgba(129, 161, 193, 0.3);
+    color: #eceff4;
+    border: 1px solid #81a1c1;
+}
+
+#entry:hover {
+    background-color: rgba(76, 86, 106, 0.4);
+}
+
+#entry image {
+    margin-right: 8px;
+}
+
+#text:selected {
+    color: #eceff4;
+    font-weight: bold;
+}

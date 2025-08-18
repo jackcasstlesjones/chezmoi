@@ -1,0 +1,78 @@
+/* Pink Theme - Scooz Colors */
+
+window#waybar {
+  background-color: #f99798;
+  color: #ffb3ff;
+}
+
+#workspaces {
+  background-color: #f99798;
+}
+
+#workspaces button {
+  color: black;
+}
+
+#workspaces button:hover {
+  background: #4a2e4d;
+}
+
+#workspaces button.focused,
+#workspaces button.active {
+  background-color: black;
+  color: #ffb3ff;
+}
+
+#workspaces button.urgent {
+  background-color:black;
+}
+
+#clock,
+#battery,
+#cpu,
+#memory,
+#disk,
+#temperature,
+#backlight,
+#network,
+#pulseaudio,
+#wireplumber,
+#custom-media,
+#tray,
+#mode,
+#idle_inhibitor,
+#scratchpad,
+#power-profiles-daemon,
+#keyboard-state,
+#mpd,
+#custom-scooz-theme {
+  background-color: #f99798;
+  color: black;
+}
+
+
+
+#battery.charging,
+#battery.plugged {
+  background-color: #ff69b4;
+  color: #2b1a2e;
+}
+
+#battery.critical:not(.charging) {
+  background-color: #dc3545;
+  color: #ffb3ff;
+}
+
+#network.disconnected {
+  background-color: #dc3545;
+}
+
+#pulseaudio.muted {
+  background-color: #8e6a93;
+  color: #2b1a2e;
+}
+
+#disk {
+  background-color: #da70d6;
+}
+

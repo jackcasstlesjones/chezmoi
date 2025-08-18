@@ -1,0 +1,11 @@
+{
+    "custom/theme-toggle": {
+        "format": "🟠",
+        "tooltip": true,
+        "tooltip-format": "Toggle Theme",
+        "on-click": "~/.config/waybar/scripts/theme-sed-toggle.sh",
+        "interval": 1,
+        "exec": "if [[ -f ~/.config/waybar/.theme-state ]] && grep -q 'theme=orange' ~/.config/waybar/.theme-state; then echo '{\"class\": \"active\"}'; else echo '{}'; fi",
+        "return-type": "json"
+    }
+}

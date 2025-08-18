@@ -1,0 +1,76 @@
+/* Nord Theme - Default Colors */
+
+window#waybar {
+  background-color: #2e3440;
+  color: #eceff4;
+}
+
+#workspaces {
+  background-color: #4c566a;
+}
+
+#workspaces button {
+  color: #d8dee9;
+}
+
+#workspaces button:hover {
+  background: #3b4252;
+}
+
+#workspaces button.focused,
+#workspaces button.active {
+  background-color: #5e81ac;
+  color: #eceff4;
+}
+
+#workspaces button.urgent {
+  background-color: #bf616a;
+}
+
+#clock,
+#battery,
+#cpu,
+#memory,
+#disk,
+#temperature,
+#backlight,
+#network,
+#pulseaudio,
+#wireplumber,
+#custom-media,
+#tray,
+#mode,
+#idle_inhibitor,
+#scratchpad,
+#power-profiles-daemon,
+#keyboard-state,
+#mpd,
+#custom-orange-theme {
+  background-color: #4c566a;
+  color: #eceff4;
+}
+
+
+#battery.charging,
+#battery.plugged {
+  background-color: #a3be8c;
+  color: #2e3440;
+}
+
+#battery.critical:not(.charging) {
+  background-color: #bf616a;
+  color: #eceff4;
+}
+
+#network.disconnected {
+  background-color: #bf616a;
+}
+
+#pulseaudio.muted {
+  background-color: #90b1b1;
+  color: #2a5c45;
+}
+
+#disk {
+  background-color: #d08770;
+}

@@ -1,0 +1,76 @@
+/* Orange Theme - Orange Colors */
+
+window#waybar {
+  background-color: transparent;
+  color: #ffa366;
+}
+
+#workspaces {
+  background-color: #5a3a20;
+}
+
+#workspaces button {
+  color: #e6b88a;
+}
+
+#workspaces button:hover {
+  background: #4a2f1a;
+}
+
+#workspaces button.focused,
+#workspaces button.active {
+  background-color: #be5103;
+  color: #ffa366;
+}
+
+#workspaces button.urgent {
+  background-color: #ff4500;
+}
+
+#clock,
+#battery,
+#cpu,
+#memory,
+#disk,
+#temperature,
+#backlight,
+#network,
+#pulseaudio,
+#wireplumber,
+#custom-media,
+#tray,
+#mode,
+#idle_inhibitor,
+#scratchpad,
+#power-profiles-daemon,
+#keyboard-state,
+#mpd,
+#custom-orange-theme {
+  background-color: #5a3a20;
+  color: #ffa366;
+}
+
+
+#battery.charging,
+#battery.plugged {
+  background-color: #ff8c42;
+  color: #2e1f16;
+}
+
+#battery.critical:not(.charging) {
+  background-color: #ff4500;
+  color: #ffa366;
+}
+
+#network.disconnected {
+  background-color: #ff4500;
+}
+
+#pulseaudio.muted {
+  background-color: #a67c52;
+  color: #3d2817;
+}
+
+#disk {
+  background-color: #d2691e;
+}

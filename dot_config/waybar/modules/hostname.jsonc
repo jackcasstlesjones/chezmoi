@@ -1,0 +1,7 @@
+{
+    "custom/hostname": {
+        "exec": "cat /proc/sys/kernel/hostname",
+        "interval": "once",
+        "format": "{}"
+    }
+}
