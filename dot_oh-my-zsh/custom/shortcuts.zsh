@@ -1,0 +1,5 @@
+alias cd="z"
+alias nv="nvim ."
+alias vv="nvim ."
+alias ni="npm install"
+alias lg="lazygit"
