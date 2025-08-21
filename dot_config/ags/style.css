@@ -1,0 +1,54 @@
+.bar {
+    background-color: rgba(255, 0, 0, 1);
+    color: #fff;
+    border-radius: 0;
+    padding: 50px;
+    min-height: 200px;
+    min-width: 100px;
+}
+
+.volume-widget {
+    background-color: rgba(0, 255, 0, 1);
+    border-radius: 8px;
+    padding: 30px;
+    margin: 20px;
+    min-width: 400px;
+    min-height: 100px;
+}
+
+.volume-icon {
+    color: #89b4fa;
+    font-size: 16px;
+    margin-right: 8px;
+}
+
+.volume-slider slider {
+    min-width: 100px;
+    min-height: 20px;
+}
+
+.volume-slider trough {
+    background-color: rgba(69, 71, 90, 0.8);
+    border-radius: 10px;
+    min-height: 6px;
+}
+
+.volume-slider highlight {
+    background-color: #89b4fa;
+    border-radius: 10px;
+}
+
+.volume-slider slider {
+    background-color: #cdd6f4;
+    border-radius: 50%;
+    min-width: 16px;
+    min-height: 16px;
+    margin: -5px;
+}
+
+.volume-label {
+    color: #cdd6f4;
+    font-size: 12px;
+    font-weight: bold;
+    min-width: 40px;
+}
