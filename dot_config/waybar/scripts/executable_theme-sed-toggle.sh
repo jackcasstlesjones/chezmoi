@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Theme arrays
-THEMES=("nord-theme.css" "orange-theme.css" "pink-theme.css" "nord-theme.css" "nord-theme.css")
+# Wallpaper array
 WALLPAPERS=("city2.png" "fallout.jpg" "anime.png" "hollow-sat.jpg" "hollow-yellow.png")
 
 # Config files
@@ -11,10 +10,10 @@ HYPRPAPER_FILE="$HOME/.config/hypr/hyprpaper.conf"
 
 # Get current index
 CURRENT_INDEX=$(cat "$STATE_FILE" 2>/dev/null || echo 0)
-NEXT_INDEX=$(((CURRENT_INDEX + 1) % ${#THEMES[@]}))
+NEXT_INDEX=$(((CURRENT_INDEX + 1) % ${#WALLPAPERS[@]}))
 
-# Apply waybar theme
-sed -i "s|@import url(\"./.*-theme.css\");|@import url(\"./${THEMES[$NEXT_INDEX]}\");|g" "$STYLE_FILE"
+# Apply waybar theme (use pywal-generated colors)
+sed -i "s|@import url(\"./.*\\.css\");|@import url(\"$HOME/.cache/wal/colors-waybar.css\");|g" "$STYLE_FILE"
 
 # Update hyprpaper config
 sed -i "s|~/.config/wallpapers/.*|~/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]}|g" "$HYPRPAPER_FILE"
