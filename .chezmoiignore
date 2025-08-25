@@ -1,1 +1,3 @@
 .config/waybar/mediaplayer.py
+.config/waybar/.theme-state
+.config/hypr/hyprpaper.conf
