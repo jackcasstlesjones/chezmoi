@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Wallpaper array
-WALLPAPERS=("city2.png" "fallout.jpg" "anime.png" "hollow-sat.jpg" "hollow-yellow.png")
+WALLPAPERS=("city2.png" "fallout.jpg" "anime.png" "hollow-sat.jpg" "hollow-yellow.png" "herakles.png")
 
 # Config files
 STYLE_FILE="$HOME/.config/waybar/style.css"
