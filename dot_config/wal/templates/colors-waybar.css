@@ -52,6 +52,11 @@
   color: @background;
 }}
 
+#workspaces button.active {{
+  background-color: @color4;
+  color: @background;
+}}
+
 #workspaces button:hover {{
   background-color: @color8;
 }}
