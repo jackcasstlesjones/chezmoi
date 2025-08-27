@@ -49,12 +49,15 @@
 
 #workspaces button.focused {{
   background-color: @color4;
-  color: @background;
 }}
 
 #workspaces button.active {{
   background-color: @color4;
-  color: @background;
+}}
+
+#clock {{
+  border: @color4 2px solid;
+  
 }}
 
 #workspaces button:hover {{

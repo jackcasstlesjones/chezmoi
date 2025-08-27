@@ -213,7 +213,7 @@ button:hover {
 
 /* Nord Theme */
 #clock {
-  border: white 1px solid;
+  /* border: white 1px solid; */
   letter-spacing: 2px;
   font-weight: 700;
   /* font-size: 16px; */
@@ -330,7 +330,6 @@ label:focus {
     background-color: #964B00;
 }
 */
-
 
 /* Nord Theme */
 /* #network { */
