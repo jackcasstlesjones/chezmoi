@@ -1,0 +1,12 @@
+# Default timeout for all notifications
+default-timeout=5000
+
+# App-specific timeouts
+[app-name=Kitty]
+default-timeout=10000
+
+[app-name=Spotify]
+default-timeout=3000
+
+[app-name=Discord]
+default-timeout=10000
