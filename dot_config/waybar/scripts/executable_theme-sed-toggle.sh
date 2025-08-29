@@ -21,7 +21,7 @@ sed -i "s|~/.config/wallpapers/.*|~/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]
 # Use pywal for terminal colors (skip wallpaper since hyprpaper handles it)
 # Use specific themes for certain wallpapers
 if [[ "${WALLPAPERS[$NEXT_INDEX]}" == frosted-dark* ]] || [[ "${WALLPAPERS[$NEXT_INDEX]}" == city2* ]]; then
-    wal --theme base16-nord -n -q
+    wal --theme nordfox -n -q
 elif [[ "${WALLPAPERS[$NEXT_INDEX]}" == hollow-sat* ]]; then
     wal --theme sexy-sweetlove -n -q
 else
