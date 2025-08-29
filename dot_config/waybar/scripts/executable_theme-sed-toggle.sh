@@ -19,7 +19,14 @@ sed -i "s|@import url(\"./.*\\.css\");|@import url(\"$HOME/.cache/wal/colors-way
 sed -i "s|~/.config/wallpapers/.*|~/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]}|g" "$HYPRPAPER_FILE"
 
 # Use pywal for terminal colors (skip wallpaper since hyprpaper handles it)
-wal -i "$HOME/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]}" -n -q
+# Use specific themes for certain wallpapers
+if [[ "${WALLPAPERS[$NEXT_INDEX]}" == frosted-dark* ]] || [[ "${WALLPAPERS[$NEXT_INDEX]}" == city2* ]]; then
+    wal --theme base16-nord -n -q
+elif [[ "${WALLPAPERS[$NEXT_INDEX]}" == hollow-sat* ]]; then
+    wal --theme sexy-sweetlove -n -q
+else
+    wal -i "$HOME/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]}" -n -q
+fi
 
 # Save new index
 echo "$NEXT_INDEX" > "$STATE_FILE"
