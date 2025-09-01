@@ -1,0 +1,243 @@
+@define-color foreground #d8dee9;
+@define-color background #2e3440;
+@define-color cursor #d8dee9;
+
+@define-color color0 #3b4252;
+@define-color color1 #bf616a;
+@define-color color2 #a3be8c;
+@define-color color3 #ebcb8b;
+@define-color color4 #81a1c1;
+@define-color color5 #b48ead;
+@define-color color6 #88c0d0;
+@define-color color7 #e5e9f0;
+@define-color color8 #4c566a;
+@define-color color9 #bf616a;
+@define-color color10 #a3be8c;
+@define-color color11 #ebcb8b;
+@define-color color12 #81a1c1;
+@define-color color13 #b48ead;
+@define-color color14 #8fbcbb;
+@define-color color15 #eceff4;
+
+/* Waybar module styling using pywal colors */
+#clock,
+#battery,
+#cpu,
+#bluetooth,
+#memory,
+#disk,
+#temperature,
+#backlight,
+#network,
+#pulseaudio,
+#wireplumber,
+#custom-media,
+#tray,
+#mode,
+#idle_inhibitor,
+#scratchpad,
+#power-profiles-daemon,
+#keyboard-state,
+#mpd {
+  background-color: @color0;
+  color: @foreground;
+}
+
+#workspaces {
+  background-color: @color8;
+}
+
+#workspaces button.focused {
+  background-color: @color4;
+}
+
+#workspaces button.active {
+  background-color: @color4;
+}
+
+#clock {
+  border: @color4 2px solid;
+  
+}
+
+#workspaces button:hover {
+  background-color: @color8;
+}
+
+#workspaces button.urgent {
+  background-color: @color1;
+  color: @foreground;
+}
+
+#battery.charging,
+#battery.plugged {
+  background-color: @color2;
+  color: @background;
+}
+
+#battery.critical:not(.charging) {
+  background-color: @color1;
+  color: @foreground;
+}
+
+#network.disconnected {
+  background-color: @color1;
+  color: @foreground;
+}
+/* AUTO GENERATED. DO NOT EDIT. CHANGES WILL BE OVERWRITTEN. */
+
+#window,
+#box,
+#aiScroll,
+#aiList,
+#search,
+#password,
+#input,
+#prompt,
+#clear,
+#typeahead,
+#list,
+child,
+scrollbar,
+slider,
+#item,
+#text,
+#label,
+#bar,
+#sub,
+#activationlabel {
+  all: unset;
+}
+
+#cfgerr {
+  background: rgba(255, 0, 0, 0.4);
+  margin-top: 20px;
+  padding: 8px;
+  font-size: 1.2em;
+}
+
+#window {
+  color: @foreground;
+}
+
+#box {
+  border-radius: 2px;
+  background: @background;
+  padding: 32px;
+  border: 1px solid lighter(@background);
+  box-shadow:
+    0 19px 38px rgba(0, 0, 0, 0.3),
+    0 15px 12px rgba(0, 0, 0, 0.22);
+}
+
+#search {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.22);
+  background: lighter(@background);
+  padding: 8px;
+}
+
+#prompt {
+  margin-left: 4px;
+  margin-right: 12px;
+  color: @foreground;
+  opacity: 0.2;
+}
+
+#clear {
+  color: @foreground;
+  opacity: 0.8;
+}
+
+#password,
+#input,
+#typeahead {
+  border-radius: 2px;
+}
+
+#input {
+  background: none;
+}
+
+#password {
+}
+
+#spinner {
+  padding: 8px;
+}
+
+#typeahead {
+  color: @foreground;
+  opacity: 0.8;
+}
+
+#input placeholder {
+  opacity: 0.5;
+}
+
+#list {
+}
+
+child {
+  padding: 8px;
+  border-radius: 2px;
+}
+
+child:selected,
+child:hover {
+  background: alpha(@color1, 0.4);
+}
+
+#item {
+}
+
+#icon {
+  margin-right: 8px;
+}
+
+#text {
+}
+
+#label {
+  font-weight: 500;
+}
+
+#sub {
+  opacity: 0.5;
+  font-size: 0.8em;
+}
+
+#activationlabel {
+}
+
+#bar {
+}
+
+.barentry {
+}
+
+.activation #activationlabel {
+}
+
+.activation #text,
+.activation #icon,
+.activation #search {
+  opacity: 0.5;
+}
+
+.aiItem {
+  padding: 10px;
+  border-radius: 2px;
+  color: @foreground;
+  background: @background;
+}
+
+.aiItem.user {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.aiItem.assistant {
+  background: lighter(@background);
+}
