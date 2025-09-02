@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Dev Localhost
-Comment=Open localhost:3000 in zen-browser
-Exec=zen-browser http://localhost:3000
+Comment=Open localhost:3000 in firefox
+Exec=firefox http://localhost:3000
 Icon=applications-development
 Type=Application
 Categories=Development;
