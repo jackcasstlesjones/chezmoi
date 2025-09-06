@@ -10,7 +10,8 @@
         "~/.config/waybar/modules/cpu-mem-temp.jsonc",
         "~/.config/waybar/modules/audio.jsonc",
         "~/.config/waybar/modules/theme-toggle.jsonc",
-        "~/.config/waybar/modules/bluetooth.jsonc"
+        "~/.config/waybar/modules/bluetooth.jsonc",
+        "~/.config/waybar/modules/waybar-cava.jsonc"
     ],
     // "layer": "top", // Waybar at top layer
     // "position": "bottom", // Waybar position (top|bottom|left|right)
@@ -26,7 +27,8 @@
         // "hyprland/workspaces",
         "clock",
         "custom/hostname",
-        "custom/media"
+        "custom/media",
+        "custom/cava"
     ],
     "modules-center": [
         "hyprland/workspaces",
