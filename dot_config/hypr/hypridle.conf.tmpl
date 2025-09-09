@@ -5,11 +5,19 @@ general {
 }
 
 listener {
+{{- if eq .chezmoi.hostname "archlinux" }}
+    timeout = 600
+{{- else }}
     timeout = 180
+{{- end }}
     on-timeout = loginctl lock-session
 }
 
 listener {
+{{- if eq .chezmoi.hostname "archlinux" }}
+    timeout = 900
+{{- else }}
     timeout = 480
+{{- end }}
     on-timeout = systemctl suspend
 }
