@@ -44,7 +44,7 @@
         "cpu",
         "memory",
         "temperature",
-        "backlight",
+        // "backlight",
         // "keyboard-state",
         "sway/language",
         "battery",
@@ -87,10 +87,10 @@
         //   "TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png"
         // }
     },
-    "backlight": {
-        // "device": "acpi_video1",
-        "format": "{percent}% ",
-    },
+    // "backlight": {
+    //     // "device": "acpi_video1",
+    //     "format": "{percent}% ",
+    // },
     "battery": {
         "states": {
             // "good": 95,
