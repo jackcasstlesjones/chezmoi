@@ -1,0 +1,89 @@
+* {
+    background-image: none;
+    box-shadow: none;
+}
+
+window {
+    background-color: rgba(46, 52, 64, 0.9);
+}
+
+button {
+    color: #d8dee9;
+    background-color: #3b4252;
+    border-style: solid;
+    border-width: 2px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 25%;
+    border-radius: 10px;
+    margin: 10px;
+    min-width: 150px;
+    min-height: 150px;
+    border-color: #434c5e;
+}
+
+button:focus, button:active, button:hover {
+    background-color: #434c5e;
+    outline-style: none;
+    border-color: #5e81ac;
+}
+
+#lock {
+    background-image: image(url("/usr/share/wlogout/icons/lock.png"), url("/usr/local/share/wlogout/icons/lock.png"));
+    border-color: #ebcb8b;
+}
+
+#logout {
+    background-image: image(url("/usr/share/wlogout/icons/logout.png"), url("/usr/local/share/wlogout/icons/logout.png"));
+    border-color: #a3be8c;
+}
+
+#suspend {
+    background-image: image(url("/usr/share/wlogout/icons/suspend.png"), url("/usr/local/share/wlogout/icons/suspend.png"));
+    border-color: #88c0d0;
+}
+
+#hibernate {
+    background-image: image(url("/usr/share/wlogout/icons/hibernate.png"), url("/usr/local/share/wlogout/icons/hibernate.png"));
+    border-color: #8fbcbb;
+}
+
+#shutdown {
+    background-image: image(url("/usr/share/wlogout/icons/shutdown.png"), url("/usr/local/share/wlogout/icons/shutdown.png"));
+    border-color: #bf616a;
+}
+
+#reboot {
+    background-image: image(url("/usr/share/wlogout/icons/reboot.png"), url("/usr/local/share/wlogout/icons/reboot.png"));
+    border-color: #d08770;
+}
+
+#lock:focus, #lock:active, #lock:hover {
+    border-color: #ebcb8b;
+    background-color: rgba(235, 203, 139, 0.2);
+}
+
+#logout:focus, #logout:active, #logout:hover {
+    border-color: #a3be8c;
+    background-color: rgba(163, 190, 140, 0.2);
+}
+
+#suspend:focus, #suspend:active, #suspend:hover {
+    border-color: #88c0d0;
+    background-color: rgba(136, 192, 208, 0.2);
+}
+
+#hibernate:focus, #hibernate:active, #hibernate:hover {
+    border-color: #8fbcbb;
+    background-color: rgba(143, 188, 187, 0.2);
+}
+
+#shutdown:focus, #shutdown:active, #shutdown:hover {
+    border-color: #bf616a;
+    background-color: rgba(191, 97, 106, 0.2);
+}
+
+#reboot:focus, #reboot:active, #reboot:hover {
+    border-color: #d08770;
+    background-color: rgba(208, 135, 112, 0.2);
+}
