@@ -10,6 +10,28 @@ return {
         return vim.fn.fnamemodify(path, ':t')
       end
 
+      -- Function to get filename with two parent directories
+      local function get_filename_with_parents()
+        local filepath = vim.fn.expand('%:p')
+        if filepath == '' then
+          return ''
+        end
+
+        local parts = {}
+        for part in string.gmatch(filepath, '[^/]+') do
+          table.insert(parts, part)
+        end
+
+        -- Get the last 3 parts (2 directories + filename)
+        local start_idx = math.max(1, #parts - 2)
+        local result_parts = {}
+        for i = start_idx, #parts do
+          table.insert(result_parts, parts[i])
+        end
+
+        return table.concat(result_parts, '/')
+      end
+
       -- Optimized Git status check to reduce cursor flicker
       local last_git_check = 0
       local git_dirty = false
@@ -103,7 +125,7 @@ return {
             'diagnostics',
           },
           lualine_c = {
-            'filename',
+            get_filename_with_parents,
           },
           lualine_x = {
             'encoding',
