@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Startup script to open applications in designated workspaces
+
+# Open Spotify in workspace W
+hyprctl dispatch exec "[workspace name:W] spotify-launcher"
+
+# Open Discord in workspace D
+hyprctl dispatch exec "[workspace name:D] discord"
+
+# Open Firefox in workspace F
+hyprctl dispatch exec "[workspace name:F] firefox"
+
+# Open Obsidian in workspace N
+hyprctl dispatch exec "[workspace name:N] obsidian"
+
+# Open kitty terminal fullscreen in workspace N
+hyprctl dispatch exec "[workspace name:N; fullscreen] kitty -e zsh -c 'cd ~/obsidian/jacks-vault/ && nvim -O scratchpad.md home.md'"
+
+# Open Thunderbird in workspace E
+hyprctl dispatch exec "[workspace name:E] thunderbird"
+
+echo "All applications launched!"
