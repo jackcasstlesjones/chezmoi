@@ -15,7 +15,7 @@ hyprctl dispatch exec "[workspace name:F] firefox"
 hyprctl dispatch exec "[workspace name:N] obsidian"
 
 # Open kitty terminal fullscreen in workspace N
-hyprctl dispatch exec "[workspace name:N; fullscreen] kitty -e zsh -c 'cd ~/obsidian/jacks-vault/ && nvim -O scratchpad.md home.md'"
+hyprctl dispatch exec "[workspace name:N] kitty -e zsh -c 'cd ~/obsidian/jacks-vault/ && nvim -O scratchpad.md home.md'"
 
 # Open Thunderbird in workspace E
 hyprctl dispatch exec "[workspace name:E] thunderbird"
