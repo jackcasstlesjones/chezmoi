@@ -1,3 +1,4 @@
 .config/waybar/mediaplayer.py
 .config/waybar/.theme-state
 .config/hypr/hyprpaper.conf
+.config/hypr/scripts/waybarCava.sh
