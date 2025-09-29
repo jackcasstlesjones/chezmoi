@@ -4,16 +4,9 @@
 HISTORY_FILE="$HOME/.cache/calc_history"
 MEMORY_FILE="$HOME/.cache/calc_memory"
 
-# Load memory if it exists
-if [ -f "$MEMORY_FILE" ]; then
-    MEMORY=$(cat "$MEMORY_FILE")
-    echo "Memory: $MEMORY"
-fi
 
 # Show recent calculations on startup
-echo "Calculator with Memory (type 'mem' to recall, 'store X' to save)"
 if [ -f "$HISTORY_FILE" ]; then
-    echo "Recent calculations:"
     tail -5 "$HISTORY_FILE" | sed 's/^[0-9-]* [0-9:]* | /  /'
 else
     echo "No previous calculations"
