@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Claude
+Comment=Open Claude AI in browser
+Exec=sh -c "hyprctl dispatch workspace name:C; sleep 0.1; firefox --new-window https://claude.ai"
+Icon=applications-internet
+Type=Application
+Categories=Network;WebBrowser;
+Keywords=ai;claude;anthropic;chat;

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Calc
+Comment=Interactive calculator with memory and history
+Exec=kitty --class=calculator -o remember_window_size=no -o initial_window_width=500 -o initial_window_height=400 /home/jack/.local/bin/calc-memory
+Icon=accessories-calculator
+Type=Application
+Categories=Utility;Calculator;
+Keywords=calc;calculator;bc;math;
