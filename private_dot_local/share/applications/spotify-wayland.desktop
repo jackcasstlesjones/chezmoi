@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Spotify (Wayland)
+Exec=/home/jack/.local/bin/spotify-wayland
+Icon=spotify
+Type=Application
+Categories=Audio;Music;Player;AudioVideo;
+Comment=Spotify with Wayland scaling fix
