@@ -1,0 +1,93 @@
+#!/bin/zsh
+
+# Calculator with persistent history and memory
+HISTORY_FILE="$HOME/.cache/calc_history"
+MEMORY_FILE="$HOME/.cache/calc_memory"
+
+# Load memory if it exists
+if [ -f "$MEMORY_FILE" ]; then
+    MEMORY=$(cat "$MEMORY_FILE")
+    echo "Memory: $MEMORY"
+fi
+
+# Show recent calculations on startup
+echo "Calculator with Memory (type 'mem' to recall, 'store X' to save)"
+if [ -f "$HISTORY_FILE" ]; then
+    echo "Recent calculations:"
+    tail -5 "$HISTORY_FILE" | sed 's/^[0-9-]* [0-9:]* | /  /'
+else
+    echo "No previous calculations"
+fi
+echo "---"
+
+# Function to handle special commands
+calc_session() {
+    while true; do
+        print -n "> "
+
+        # Read input character by character to handle ESC properly
+        input=""
+        while IFS= read -r -s -k1 char; do
+            # Check for ESC key (ASCII 27)
+            if [[ $char == $'\e' ]]; then
+                echo
+                return 0
+            # Check for Enter key
+            elif [[ $char == $'\n' ]] || [[ $char == $'\r' ]]; then
+                echo
+                break
+            # Check for backspace
+            elif [[ $char == $'\b' ]] || [[ $char == $'\177' ]]; then
+                if [[ ${#input} -gt 0 ]]; then
+                    input=${input%?}
+                    printf "\b \b"
+                fi
+            else
+                input+=$char
+                printf "%s" "$char"
+            fi
+        done
+
+        case "$input" in
+            "mem"|"memory")
+                if [ -f "$MEMORY_FILE" ]; then
+                    echo "Memory: $(cat "$MEMORY_FILE")"
+                else
+                    echo "Memory is empty"
+                fi
+                ;;
+            store*)
+                value=$(echo "$input" | sed 's/store //')
+                echo "$value" > "$MEMORY_FILE"
+                echo "Stored: $value"
+                ;;
+            "hist"|"history")
+                if [ -f "$HISTORY_FILE" ]; then
+                    tail -10 "$HISTORY_FILE"
+                else
+                    echo "No history yet"
+                fi
+                ;;
+            "clear")
+                clear
+                ;;
+            "exit"|"quit"|"q"|"")
+                break
+                ;;
+            *)
+                # Calculate and save to history
+                result=$(qalc -t "$input" 2>/dev/null)
+                if [ $? -eq 0 ] && [ -n "$result" ]; then
+                    echo "$result"
+                    echo "$(date '+%Y-%m-%d %H:%M:%S') | $input = $result" >> "$HISTORY_FILE"
+                    # Auto-save result to memory
+                    echo "$result" > "$MEMORY_FILE"
+                else
+                    echo "Error: Invalid expression"
+                fi
+                ;;
+        esac
+    done
+}
+
+calc_session
