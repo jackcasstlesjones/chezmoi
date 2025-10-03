@@ -47,6 +47,10 @@
   background-color: @color8;
 }}
 
+#workspaces button {{
+  color: @foreground;
+}}
+
 #workspaces button.focused {{
   background-color: @color4;
 }}
