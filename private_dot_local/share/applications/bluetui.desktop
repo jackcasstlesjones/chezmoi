@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Bluetui
+Comment=Bluetooth TUI manager
+Exec=kitty --class=bluetui -o remember_window_size=no -o initial_window_width=600 -o initial_window_height=500 bluetui
+Icon=bluetooth
+Type=Application
+Categories=System;Settings;
+Keywords=bluetooth;bt;device;pairing;
