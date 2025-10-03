@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=FACmail
+Comment=Open facmail in firefox
+Exec=firefox https://mail.google.com/mail/u/0/#inbox
+Icon=applications-internet
+Type=Application
+Categories=Network;WebBrowser;
+Keywords=email;fac;
