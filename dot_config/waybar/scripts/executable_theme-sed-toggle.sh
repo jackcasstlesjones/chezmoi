@@ -9,7 +9,7 @@ STATE_FILE="$HOME/.config/waybar/.theme-state"
 HYPRPAPER_FILE="$HOME/.config/hypr/hyprpaper.conf"
 
 # Use fuzzel to select wallpaper
-SELECTED=$(printf '%s\n' "${WALLPAPERS[@]}" | fuzzel --dmenu --prompt "Select wallpaper: ")
+SELECTED=$(printf '%s\n' "${WALLPAPERS[@]}" | fuzzel --dmenu --hide-prompt)
 
 # Exit if no selection
 [[ -z "$SELECTED" ]] && exit 0
