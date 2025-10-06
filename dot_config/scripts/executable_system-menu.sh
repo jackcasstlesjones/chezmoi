@@ -3,15 +3,19 @@
 # System menu using fuzzel dmenu mode
 # Icons using nerd font symbols
 
-OPTIONS="🔒 Lock
-🚪 Logout
-💤 Suspend
-🔄 Reboot
-⏻ Shutdown
-🌙 Night Light
+OPTIONS="🌙 Night Light
 🎧 Audio
-📶 Bluetooth
-🖥️  Display"
+📶 Bluetooth"
+
+# OPTIONS="🔒 Lock
+# 🚪 Logout
+# 💤 Suspend
+# 🔄 Reboot
+# ⏻ Shutdown
+# 🌙 Night Light
+# 🎧 Audio
+# 📶 Bluetooth
+# 🖥️  Display"
 
 CHOICE=$(echo "$OPTIONS" | fuzzel --dmenu --hide-prompt --lines 9)
 
