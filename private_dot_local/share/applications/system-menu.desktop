@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=System Menu
+Comment=Power and system settings
+Exec=/home/jack/.config/scripts/system-menu.sh
+Icon=system-shutdown
+Terminal=false
+Type=Application
+Categories=Utility;System;
+Keywords=power;logout;shutdown;reboot;suspend;lock;
