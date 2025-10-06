@@ -8,9 +8,20 @@ STYLE_FILE="$HOME/.config/waybar/style.css"
 STATE_FILE="$HOME/.config/waybar/.theme-state"
 HYPRPAPER_FILE="$HOME/.config/hypr/hyprpaper.conf"
 
-# Get current index
-CURRENT_INDEX=$(cat "$STATE_FILE" 2>/dev/null || echo 0)
-NEXT_INDEX=$(((CURRENT_INDEX + 1) % ${#WALLPAPERS[@]}))
+# Use fuzzel to select wallpaper
+SELECTED=$(printf '%s\n' "${WALLPAPERS[@]}" | fuzzel --dmenu --prompt "Select wallpaper: ")
+
+# Exit if no selection
+[[ -z "$SELECTED" ]] && exit 0
+
+# Find index of selected wallpaper
+NEXT_INDEX=0
+for i in "${!WALLPAPERS[@]}"; do
+    if [[ "${WALLPAPERS[$i]}" == "$SELECTED" ]]; then
+        NEXT_INDEX=$i
+        break
+    fi
+done
 
 # Apply waybar theme (use pywal-generated colors)
 sed -i "s|@import url(\"./.*\\.css\");|@import url(\"$HOME/.cache/wal/colors-waybar.css\");|g" "$STYLE_FILE"

@@ -3,7 +3,8 @@
 # System menu using fuzzel dmenu mode
 # Icons using nerd font symbols
 
-OPTIONS="🌙 Night Light
+OPTIONS="🎨 Themes
+🌙 Night Light
 🎧 Audio
 📶 Bluetooth"
 
@@ -20,6 +21,9 @@ OPTIONS="🌙 Night Light
 CHOICE=$(echo "$OPTIONS" | fuzzel --dmenu --hide-prompt --lines 9)
 
 case "$CHOICE" in
+    "🎨 Themes")
+        ~/.config/waybar/scripts/theme-sed-toggle.sh
+        ;;
     "🔒 Lock")
         hyprlock
         ;;
