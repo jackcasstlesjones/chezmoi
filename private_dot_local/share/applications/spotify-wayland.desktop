@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Spotify (Wayland)
-Exec=/home/jack/.local/bin/spotify-wayland
+Exec=/home/jack/.config/scripts/spotify-wayland.sh
 Icon=spotify
 Type=Application
 Categories=Audio;Music;Player;AudioVideo;
