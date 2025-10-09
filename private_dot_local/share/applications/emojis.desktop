@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Emojis
+Comment=Emojis
+Exec=/home/jack/.config/scripts/fuzzel-emojis.sh
+Icon=emoji
+Type=Application
+Categories=System;Settings;
+Keywords=emojis;
