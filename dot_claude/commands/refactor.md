@@ -1,0 +1,1 @@
+Refactor this JSX, looking for opportunities to keep code DRY, unnecessary fallbacks, and overly nested divs. We also seem to be overusing divs and should use semantic HTML where possible. There may be unnecessary divs where removing the inner divs and transferring their tailwind classes allows us to remove complexity from the code without changing the appearance of our frontend.
