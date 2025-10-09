@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=SSH Launcher
+Comment=Fuzzel SSH launcher with kitty
+Exec=/home/jack/.config/scripts/fuzzel-ssh.sh
+Icon=network-server
+Type=Application
+Categories=Network;RemoteAccess;
+Keywords=ssh;terminal;remote;
