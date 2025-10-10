@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Dev2
+Comment=Open localhost:5173 in firefox
+Exec=firefox http://localhost:5173
+Icon=applications-development
+Type=Application
+Categories=Development;
+Keywords=dev;localhost;development;
