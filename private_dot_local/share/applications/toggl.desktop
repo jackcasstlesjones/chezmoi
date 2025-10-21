@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=toggl
+Comment=Open toggl in firefox
+Exec=firefox https://track.toggl.com/timer
+Icon=applications-internet
+Type=Application
+Categories=Network;WebBrowser;
+Keywords=toggl;fac;

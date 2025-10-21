@@ -5,5 +5,3 @@ Type=Application
 Name=Claude
 Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 1' --class='Claude' --app='https://claude.ai'"
 Icon=web-browser
-StartupWMClass=Claude
-Terminal=false
