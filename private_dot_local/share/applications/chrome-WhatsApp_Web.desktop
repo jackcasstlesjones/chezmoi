@@ -1,0 +1,9 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=WhatsApp Web
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 1' --class='WhatsApp_Web' --app='https://web.whatsapp.com'"
+Icon=web-browser
+StartupWMClass=WhatsApp_Web
+Terminal=false
