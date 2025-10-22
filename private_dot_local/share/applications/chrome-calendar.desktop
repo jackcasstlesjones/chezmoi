@@ -1,0 +1,9 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Calendar
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 1' --class='Google Calendar' --app='https://calendar.google.com/calendar'"
+Icon=web-browser
+
+
