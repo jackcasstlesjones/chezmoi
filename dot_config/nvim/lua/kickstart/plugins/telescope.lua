@@ -134,12 +134,9 @@ return {
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
       end, { desc = '[S]earch [N]eovim files' })
 
-      -- Search only changed git files
+      -- Search only changed git files (modified, added, deleted)
       vim.keymap.set('n', '<leader>si', function()
-        builtin.git_files {
-          git_command = { 'git', 'diff', '--name-only', 'HEAD' },
-          prompt_title = 'Search Changed Git Files',
-        }
+        builtin.git_status()
       end, { desc = '[S]earch changed git f[I]les' })
     end,
   },
