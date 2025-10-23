@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Hours
+Comment=Calculate hours: divide by 7.5 and multiply by 300
+Exec=/home/jack/.config/scripts/fuzzel-hours-calc.sh
+Icon=accessories-calculator
+Type=Application
+Categories=Utility;Calculator;
+Keywords=hours;calculator;time;
