@@ -26,6 +26,7 @@ return {
         end,
       },
       { 'nvim-telescope/telescope-ui-select.nvim' },
+      { 'mrloop/telescope-git-branch.nvim' },
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
@@ -87,6 +88,7 @@ return {
       -- Enable Telescope extensions if they are installed
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
+      pcall(require('telescope').load_extension, 'git_branch')
 
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
@@ -138,6 +140,11 @@ return {
       vim.keymap.set('n', '<leader>si', function()
         builtin.git_status()
       end, { desc = '[S]earch changed git f[I]les' })
+
+      -- Search files different from main branch
+      vim.keymap.set('n', '<leader>sm', function()
+        require('telescope').extensions.git_branch.git_branch()
+      end, { desc = '[S]earch files diff from [M]ain' })
     end,
   },
 }
