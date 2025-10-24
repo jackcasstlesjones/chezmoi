@@ -14,7 +14,7 @@ DAYS=$(echo "scale=2; $INPUT / 7.5" | bc)
 RESULT=$(echo "scale=2; $DAYS * 300" | bc)
 
 # Show result in fuzzel
-echo "$INPUT hours = $DAYS days = £$RESULT" | fuzzel --dmenu --prompt "Result: "
+echo "$INPUT hours = $DAYS days = £$RESULT" | fuzzel --dmenu --width=50 --prompt "Result: "
 
 # Copy result to clipboard
 echo "$RESULT" | wl-copy
