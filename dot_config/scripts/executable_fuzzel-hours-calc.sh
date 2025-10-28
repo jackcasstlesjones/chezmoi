@@ -15,7 +15,7 @@ HOURS=$(echo "scale=2; $INPUT" | bc)
 
 # Calculate: (hours / 7.5) * 300
 DAYS=$(echo "scale=2; $HOURS / 7.5" | bc)
-RESULT=$(echo "scale=2; $DAYS * 300" | bc)
+RESULT=$(echo "scale=2; ($DAYS * 300) * 0.87" | bc)
 
 # Format output based on whether it's an expression or single value
 if [[ "$INPUT" =~ [+\-*/] ]]; then
