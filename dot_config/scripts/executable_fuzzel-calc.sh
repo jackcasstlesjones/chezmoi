@@ -30,14 +30,7 @@ do
     # Exit if empty
     [ -z "$INPUT" ] && exit 0
 
-    # If selected from history (contains "="), copy result
-    if [[ "$INPUT" =~ .*=.* ]]; then
-        RESULT=$(echo "$INPUT" | awk '{print $NF}')
-        wl-copy "$RESULT"
-        exit 0
-    fi
-
-    # Calculate new expression
+    # Calculate new expression (always treat input as new calculation)
     QALC_RET=$(qalc "$INPUT")
     LAST_INPUT=$INPUT
     echo "$QALC_RET" >> "$HISTORY_FILE"
