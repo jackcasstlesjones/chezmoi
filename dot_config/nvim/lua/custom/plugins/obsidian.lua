@@ -33,6 +33,12 @@ return {
 				end,
 				opts = { noremap = false, expr = true, buffer = true, desc = "Obsidian Templates" },
 			},
+			["<leader>od"] = {
+				action = function()
+					return "<cmd>ObsidianToday<CR>"
+				end,
+				opts = { noremap = false, expr = true, buffer = true, desc = "Obsidian Daily Note" },
+			},
 		},
 		disable_frontmatter = true, -- Prevents automatic frontmatter insertion
 		workspaces = {
