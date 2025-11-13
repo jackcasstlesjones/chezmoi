@@ -1,0 +1,10 @@
+[ids]
+*
+
+[main]
+# Caps lock: tap for escape, hold as hyper layer
+capslock = overload(hyper, esc)
+
+[hyper:C-S-M-A]
+# This layer applies Ctrl+Shift+Alt+Super to all keys by default
+# Any unmapped key will automatically get these modifiers
