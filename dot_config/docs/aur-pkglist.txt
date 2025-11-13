@@ -1,0 +1,9 @@
+aylurs-gtk-shell-git
+google-chrome
+ngrok
+pipes.sh
+postman-bin
+stremio
+tre-command
+wlogout
+yay
