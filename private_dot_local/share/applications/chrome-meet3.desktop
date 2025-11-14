@@ -1,0 +1,7 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Meet 3
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 3' --class='Meet 3' --app='https://meet.google.com/'"
+Icon=web-browser
