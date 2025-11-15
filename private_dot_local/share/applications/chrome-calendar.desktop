@@ -2,8 +2,8 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Calendar
-Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 1' --class='Google Calendar' --app='https://calendar.google.com/calendar'"
+Name=Calendar 1
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 1' --class='Calendar 1' --app='https://calendar.google.com/calendar'"
 Icon=web-browser
 
 
