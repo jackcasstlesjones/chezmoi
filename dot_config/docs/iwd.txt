@@ -1,0 +1,1 @@
+Powersave is currently turned off in `/etc/iwd/main.conf` and we are configured to use iwd in `/etc/NetworkManager/conf.d/iwd.conf`
