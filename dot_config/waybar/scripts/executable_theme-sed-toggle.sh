@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Wallpaper array
-WALLPAPERS=("city2.png" "fallout.jpg" "anime.png" "hollow-sat.jpg" "hollow-yellow.png" "herakles.png" "frosted-dark.png" "nord-mountain.png" "hollowknight-cartoon.jpg" "zach-mountain.jpg")
+WALLPAPERS=("city2.png" "fallout.jpg" "anime.png" "hollow-sat.jpg" "hollow-yellow.png" "herakles.png" "frosted-dark.png" "nord-mountain.png" "hollowknight-cartoon.jpg" "zach-mountain.jpg" "swirl.jpg")
 
 # Config files
 STYLE_FILE="$HOME/.config/waybar/style.css"
@@ -22,7 +22,6 @@ for i in "${!WALLPAPERS[@]}"; do
         break
     fi
 done
-
 # Apply waybar theme (use pywal-generated colors)
 sed -i "s|@import url(\"./.*\\.css\");|@import url(\"$HOME/.cache/wal/colors-waybar.css\");|g" "$STYLE_FILE"
 
@@ -35,6 +34,8 @@ if [[ "${WALLPAPERS[$NEXT_INDEX]}" == frosted-dark* ]] || [[ "${WALLPAPERS[$NEXT
     wal --theme nordfox -n -q
 elif [[ "${WALLPAPERS[$NEXT_INDEX]}" == hollow-sat* ]]; then
     wal --theme sexy-sweetlove -n -q
+elif [[ "${WALLPAPERS[$NEXT_INDEX]}" == swirl* ]]; then
+    wal --theme ashes -n -q
 else
     wal -i "$HOME/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]}" -n -q
 fi
