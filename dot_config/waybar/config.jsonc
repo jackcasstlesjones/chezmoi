@@ -9,7 +9,6 @@
         "~/.config/waybar/modules/network.jsonc",
         "~/.config/waybar/modules/cpu-mem-temp.jsonc",
         "~/.config/waybar/modules/audio.jsonc",
-        "~/.config/waybar/modules/theme-toggle.jsonc",
         "~/.config/waybar/modules/bluetooth.jsonc"
         // "~/.config/waybar/modules/waybar-cava.jsonc"
     ],
@@ -50,8 +49,8 @@
         "battery",
         // "battery#bat2",
         "tray",
-        "custom/theme-toggle",
-        "custom/power"
+        "custom/theme-toggle"
+        // "custom/power"
     ],
     "mpd": {
         "format": "{stateIcon} {consumeIcon}{randomIcon}{repeatIcon}{singleIcon}{artist} - {album} - {title} ({elapsedTime:%M:%S}/{totalTime:%M:%S}) ⸨{songPosition}|{queueLength}⸩ {volume}% ",
