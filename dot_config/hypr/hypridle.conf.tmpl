@@ -9,6 +9,8 @@ listener {
     timeout = 600
 {{- else if eq .chezmoi.hostname "luthen" }}
     timeout = 600
+{{- else if eq .chezmoi.hostname "cassian" }}
+    timeout = 180
 {{- else }}
     timeout = 180
 {{- end }}
@@ -20,6 +22,8 @@ listener {
     timeout = 900
 {{- else if eq .chezmoi.hostname "luthen" }}
     timeout = 900
+{{- else if eq .chezmoi.hostname "cassian" }}
+    timeout = 480
 {{- else }}
     timeout = 480
 {{- end }}
