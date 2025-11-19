@@ -13,5 +13,9 @@ return {
     -- { '<C-j>', '<cmd>TailwindNextClass<cr>', desc = 'Next Tailwind Class' },
     -- { '<C-k>', '<cmd>TailwindPrevClass<cr>', desc = 'Previous Tailwind Class' },
   },
-  opts = {}, -- your configuration
+  opts = {
+    server = {
+      override = false, -- Disable automatic lspconfig setup to avoid deprecation warning
+    },
+  }
 }

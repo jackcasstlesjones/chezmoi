@@ -191,6 +191,11 @@ return {
 
         --
 
+        tailwindcss = {
+          -- Tailwind CSS language server
+          -- Works with tailwind-tools.nvim plugin
+        },
+
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
