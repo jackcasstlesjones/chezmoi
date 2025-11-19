@@ -173,7 +173,7 @@ button:hover {
   padding: 0 10px;
   /* color: #eceff4; */
   /* Nord6 - Snow Storm */
-  border-radius: 10px;
+  border-radius: 4px;
   margin: 0 2px;
   letter-spacing: 1.6px;
 }
@@ -184,7 +184,7 @@ button:hover {
   background-color: transparent;
   /* color: #d8dee9; */
   /* Nord4 - Snow Storm */
-  border-radius: 8px;
+  border-radius: 4px;
   margin: 2px;
 }
 
@@ -197,7 +197,7 @@ button:hover {
 #workspaces {
   /* background-color: #4c566a; */
   /* Nord10 - Frost */
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 2px;
 }
 
