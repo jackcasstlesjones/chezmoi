@@ -44,8 +44,13 @@
 }}
 
 #workspaces {{
-  background-color: @color8;
+  background-color: @color0;
+  border: @color4 2px solid;
 }}
+
+#tray {{
+    border: @color4 0px solid;
+  }}
 
 #workspaces button {{
   color: @foreground;
@@ -60,7 +65,7 @@
 }}
 
 #clock {{
-  border: @color4 2px solid;
+  border: @color4 0px solid;
   
 }}
 
