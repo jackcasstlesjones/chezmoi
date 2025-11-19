@@ -74,6 +74,7 @@ mako
 man-db
 mariadb
 memtester
+mongodb-compass-bin
 nano
 neovim
 network-manager-applet
