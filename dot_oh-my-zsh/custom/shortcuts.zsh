@@ -20,3 +20,5 @@ alias supanext="npx create-next-app --use-pnpm --src-dir --eslint --tailwind --a
 alias initnvm="source /usr/share/nvm/init-nvm.sh"
 alias upd="sudo pacman -Syu"
 alias rip="trash-put"
+alias noo="systemctl status NetworkManager"
+alias ffs="sudo systemctl restart NetworkManager"
