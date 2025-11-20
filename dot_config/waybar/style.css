@@ -1,5 +1,5 @@
 /* Orange Theme System - sed replaces this line */
-@import url("./nord-theme.css");
+@import url("/home/jack/.cache/wal/colors-waybar.css");
 
 * {
   /* `otf-font-awesome` is required to be installed for icons */
