@@ -51,6 +51,10 @@
 
 #tray {{
   }}
+#custom-media {{
+
+  border: @color11 2px solid;
+  }}
 
 #workspaces button {{
   color: @foreground;
