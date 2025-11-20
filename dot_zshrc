@@ -6,6 +6,9 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
+(cat ~/.cache/wal/sequences &)
+source ~/.cache/wal/colors-tty.sh
+
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
@@ -116,11 +119,3 @@ source $ZSH/oh-my-zsh.sh
 
 # Initialize zoxide
 eval "$(zoxide init zsh)"
-
-# Import colorscheme from 'wal' asynchronously
-# &   # Run the process in the background.
-# ( ) # Hide shell job control messages.
-(cat ~/.cache/wal/sequences &)
-
-# To add support for TTYs this line can be optionally added.
-source ~/.cache/wal/colors-tty.sh
