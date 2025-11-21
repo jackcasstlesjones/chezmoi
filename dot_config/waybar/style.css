@@ -236,12 +236,12 @@ button:hover {
 }
 */
 
-@keyframes blink {
+/* @keyframes blink {
   to {
     background-color: #ffffff;
     color: #000000;
   }
-}
+} */
 
 /* Using steps() instead of linear as a timing function to limit cpu usage */
 /* Nord Theme */
@@ -250,11 +250,11 @@ button:hover {
   /* Nord11 - Aurora */
   color: #eceff4;
   /* Nord6 - Snow Storm */
-  animation-name: blink;
+  /* animation-name: blink;
   animation-duration: 0.5s;
   animation-timing-function: steps(12);
   animation-iteration-count: infinite;
-  animation-direction: alternate;
+  animation-direction: alternate; */
 }
 
 /* Original - commented out
