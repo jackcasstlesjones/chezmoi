@@ -1,0 +1,78 @@
+CAMERA AUTOSUSPEND FIX
+======================
+
+Issue: Integrated RGB Camera (SunplusIT 174f:11b4) randomly becomes unavailable
+during video calls with "camera not found" errors.
+
+Root Cause:
+- Camera is USB autosuspending after 2 seconds of inactivity (power/control="auto")
+- Device has buggy USB resume handler in firmware
+- When suspended, camera fails to wake up properly when accessed
+- This is a hardware/firmware bug in the SunplusIT controller, not fixable via
+  linux-firmware updates (camera uses generic uvcvideo driver with no external
+  firmware blobs)
+
+Solution:
+Two-part approach to ensure reliable autosuspend disabling:
+
+1. udev rule (primary method):
+   /etc/udev/rules.d/50-camera-no-autosuspend.rules
+
+   Rule contents:
+     SUBSYSTEM=="usb", ATTR{idVendor}=="174f", ATTR{idProduct}=="11b4", ATTR{power/control}="on"
+
+   Note: Removed ACTION=="add" requirement to ensure rule applies reliably.
+
+   Manual trigger (if needed):
+     sudo udevadm trigger --subsystem-match=usb --attr-match=idVendor=174f
+
+2. systemd service (backup method):
+   Created to ensure setting persists across boots and system state changes.
+
+   Script: ~/.config/scripts/disable-camera-autosuspend.sh
+   (Managed via chezmoi at dot_config/scripts/executable_disable-camera-autosuspend.sh)
+
+   #!/bin/bash
+   # Disable USB autosuspend for SunplusIT camera (174f:11b4)
+   # This prevents the camera from randomly becoming unavailable during video calls
+
+   for dev in /sys/bus/usb/devices/*; do
+       if [ -f "$dev/idVendor" ] && [ "$(cat "$dev/idVendor")" = "174f" ] && \
+          [ -f "$dev/idProduct" ] && [ "$(cat "$dev/idProduct")" = "11b4" ]; then
+           echo on > "$dev/power/control"
+           echo "Disabled autosuspend for camera at $dev"
+           exit 0
+       fi
+   done
+
+   echo "Camera device 174f:11b4 not found"
+   exit 1
+
+   Service: /etc/systemd/system/camera-no-autosuspend.service
+   [Unit]
+   Description=Disable USB autosuspend for SunplusIT camera
+   After=multi-user.target
+
+   [Service]
+   Type=oneshot
+   ExecStart=/home/jack/.config/scripts/disable-camera-autosuspend.sh
+   RemainAfterExit=yes
+
+   [Install]
+   WantedBy=multi-user.target
+
+   Enable the service:
+     sudo systemctl daemon-reload
+     sudo systemctl enable --now camera-no-autosuspend.service
+
+Verification:
+  cat /sys/bus/usb/devices/1-1/power/control  # Should show "on"
+  cat /sys/bus/usb/devices/1-1/power/runtime_status  # Should show "active"
+  systemctl status camera-no-autosuspend.service  # Should be active
+
+Alternative (nuclear option):
+If both methods fail, can disable all USB autosuspend globally via kernel parameter:
+  Add to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT: usbcore.autosuspend=-1
+  Then: sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+Date: 2025-11-23
