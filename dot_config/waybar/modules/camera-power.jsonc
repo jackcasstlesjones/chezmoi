@@ -1,0 +1,8 @@
+{
+  "custom/camera-power": {
+    "exec": "~/.config/scripts/camera-power-status.sh",
+    "format": " {}",
+    "return-type": "json",
+    "interval": 5
+  }
+}

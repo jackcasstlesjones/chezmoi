@@ -168,7 +168,8 @@ button:hover {
 #scratchpad,
 #power-profiles-daemon,
 #keyboard-state,
-#mpd {
+#mpd,
+#custom-camera-power {
   /* background-color: #4c566a; */
   padding: 0 10px;
   /* color: #eceff4; */
@@ -486,4 +487,26 @@ label:focus {
 
 #privacy-item.audio-out {
   background-color: #0069d4;
+}
+
+/* Camera power module */
+#custom-camera-power.critical {
+  background-color: #bf616a;
+  /* Nord11 - Aurora (same red as battery critical) */
+  color: #eceff4;
+  /* Nord6 - Snow Storm */
+}
+
+#custom-camera-power.warning {
+  background-color: #ebcb8b;
+  /* Nord13 - Aurora */
+  color: #2e3440;
+  /* Nord0 - Polar Night */
+}
+
+#custom-camera-power.good {
+  background-color: #a3be8c;
+  /* Nord14 - Aurora */
+  color: #2e3440;
+  /* Nord0 - Polar Night */
 }

@@ -38,6 +38,7 @@
 #scratchpad,
 #power-profiles-daemon,
 #keyboard-state,
+#custom-camera-power,
 #mpd {{
   background-color: @color0;
   color: @foreground;
