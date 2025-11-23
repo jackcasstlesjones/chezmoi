@@ -22,3 +22,5 @@ alias upd="sudo pacman -Syu"
 alias rip="trash-put"
 alias noo="systemctl status NetworkManager"
 alias ffs="sudo systemctl restart NetworkManager"
+alias camoff='echo auto | sudo tee /sys/bus/usb/devices/1-1/power/control'
+alias camon='echo on | sudo tee /sys/bus/usb/devices/1-1/power/control'
