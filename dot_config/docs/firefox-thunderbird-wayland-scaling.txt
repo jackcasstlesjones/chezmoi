@@ -1,0 +1,43 @@
+Firefox and Thunderbird Wayland Fractional Scaling Fix
+======================================================
+
+Problem:
+--------
+Firefox and Thunderbird appear blurry when plugging in external monitors with
+different DPI/scaling settings (e.g., 4K monitor with 1.33 scaling vs laptop
+screen with 1.175 scaling).
+
+Root Cause:
+-----------
+Mozilla apps have native Wayland fractional scaling support, but it's disabled
+by default. Without it enabled, they don't properly handle dynamic scaling
+changes when monitors are hotplugged or windows are moved between displays.
+
+Solution:
+---------
+Enable native Wayland fractional scaling in about:config/Config Editor:
+
+Firefox:
+1. Open Firefox
+2. Navigate to about:config
+3. Search for: widget.wayland.fractional-scale.enabled
+4. Set to: true
+
+Thunderbird:
+1. Open Thunderbird
+2. Go to Settings → Config Editor (bottom of General settings)
+3. Search for: widget.wayland.fractional-scale.enabled
+4. Set to: true
+
+Requirements:
+-------------
+- MOZ_ENABLE_WAYLAND=1 must be set (already configured in hyprland.conf)
+- Apps will restart with proper scaling support
+
+Notes:
+------
+- This feature was added recently and is still being refined by Mozilla
+- It's disabled by default for stability/compatibility reasons
+- Once enabled, Firefox/Thunderbird will properly scale when moving between
+  monitors with different DPI settings without needing restarts
+- Bug 1849109 (context menu issues) was fixed in March 2025
