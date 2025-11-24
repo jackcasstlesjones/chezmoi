@@ -491,22 +491,22 @@ label:focus {
 
 /* Camera power module */
 #custom-camera-power.critical {
-  background-color: #bf616a;
+  color: #bf616a;
   /* Nord11 - Aurora (same red as battery critical) */
-  color: #eceff4;
+  /* color: #eceff4; */
   /* Nord6 - Snow Storm */
 }
 
 #custom-camera-power.warning {
-  background-color: #ebcb8b;
+  color: #ebcb8b;
   /* Nord13 - Aurora */
-  color: #2e3440;
+  /* color: #2e3440; */
   /* Nord0 - Polar Night */
 }
 
 #custom-camera-power.good {
-  background-color: #a3be8c;
+  color: #a3be8c;
   /* Nord14 - Aurora */
-  color: #2e3440;
+  /* color: #2e3440; */
   /* Nord0 - Polar Night */
 }
