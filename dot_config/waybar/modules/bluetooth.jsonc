@@ -1,8 +1,7 @@
 {
     "bluetooth": {
-        "format": "{status}",
-        "format-connected": " {device_alias}",
-        "format-disabled": "",
-        "on-click": "blueberry"
+        "format": " on",
+        "format-disabled": " off",
+        "on-click": "rfkill toggle bluetooth"
     }
 }
