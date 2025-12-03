@@ -111,7 +111,8 @@
             "",
             "",
             ""
-        ]
+        ],
+        "on-update": "$HOME/.config/scripts/battery-notify.sh"
     },
     "battery#bat2": {
         "bat": "BAT2"

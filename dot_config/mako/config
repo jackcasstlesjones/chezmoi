@@ -10,3 +10,10 @@ default-timeout=3000
 
 [app-name=Discord]
 default-timeout=10000
+
+[app-name="Battery Warning"]
+background-color=#FF0000
+text-color=#FFFFFF
+border-color=#CC0000
+default-timeout=5000
+anchor=center
