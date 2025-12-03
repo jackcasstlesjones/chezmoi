@@ -1,0 +1,7 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Supabase
+Exec=firefox https://supabase.com/dashboard/organizations
+Icon=web-browser
