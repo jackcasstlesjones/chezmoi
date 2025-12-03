@@ -25,3 +25,4 @@ alias ffs="sudo systemctl restart NetworkManager"
 alias camoff='echo auto | sudo tee /sys/bus/usb/devices/1-1/power/control'
 alias camon='echo on | sudo tee /sys/bus/usb/devices/1-1/power/control'
 alias bd="pnpm build"
+alias checkcam="journalctl -u camera-no-autosuspend.service -u reset-camera-after-suspend.service -b --no-pager"
