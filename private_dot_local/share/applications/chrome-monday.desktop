@@ -1,0 +1,7 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Monday
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 1' --class='Monday' --app='https://monday.com/'"
+Icon=web-browser

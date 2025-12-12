@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=Monday
-Comment=Open Monday.com in firefox
-Exec=firefox https://ozeaon.monday.com/
-Icon=applications-development
-Type=Application
-Categories=Development;
-Keywords=dev;localhost;development;
