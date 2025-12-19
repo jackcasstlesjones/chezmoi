@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Quit All Apps
+Comment=Close all running applications
+Exec=/home/jack/.config/scripts/quit-all-apps.sh
+Icon=application-exit
+Terminal=false
+Type=Application
+Categories=Utility;System;
+Keywords=quit;close;apps;kill;exit;
