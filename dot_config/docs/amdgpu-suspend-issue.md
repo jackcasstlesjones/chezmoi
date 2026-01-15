@@ -91,8 +91,17 @@ Checked the official [Linux 6.18.3 changelog](https://cdn.kernel.org/pub/linux/k
 
 No amdgpu VPE or suspend/resume fixes included.
 
+**✅ UPDATE (2026-01-09)**: The VPE fix has been merged into `amd-drm-fixes-6.19` (as of Jan 6, 2026)
+
+- **Commit**: Reapply "Revert 'drm/amd: Skip power ungate during suspend for VPE'"
+- **Status**: Queued for kernel 6.19.x or later 6.18.x backports
+- **Real Fix**: Underlying s2idle timing issue will be fixed in BIOS, not kernel workarounds
+
 ### Next Steps
-⏳ **Wait for kernel update** - The December 2025 VPE patch needs to be backported to stable kernels (likely 6.19+ or later 6.18.x updates)
+⏳ **Kernel 6.19+ incoming** - The VPE revert patch is already in the drm-fixes-6.19 pull request and will be included in the next release. You can either:
+1. Wait for kernel 6.19 or later 6.18.x updates
+2. Apply the workarounds below in the meantime
+3. Check for BIOS updates that fix the s2idle timing issue
 
 ## Potential Workarounds
 
@@ -203,7 +212,16 @@ Check kernel version:
 uname -r
 ```
 
+## Hard Power-Off Aftermath
+
+When the system becomes unresponsive due to the VPE suspend bug, a forced power-off may cause EXT4 filesystem corruption on reboot. See `kernel-panic.md` for details on this cascading failure.
+
+**Recovery steps if filesystem is corrupted**:
+```bash
+sudo fsck.ext4 -y /dev/nvme0n1p2
+```
+
 ---
 
-**Last Updated**: 2026-01-05
-**Status**: Awaiting kernel patch backport to stable releases
+**Last Updated**: 2026-01-09
+**Status**: Fix merged in drm-fixes-6.19, awaiting release
