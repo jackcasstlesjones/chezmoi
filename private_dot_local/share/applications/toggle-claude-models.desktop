@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Model Toggle
+Exec=/home/jack/.config/scripts/toggle-claude-models.sh
+Terminal=false
+Icon=anjuta
+Categories=Utility;Settings;
