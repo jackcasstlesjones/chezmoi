@@ -31,3 +31,7 @@ alias rel="hyprctl reload"
 alias ff="fastfetch"
 alias gigb="df -h / | awk 'NR==2 {print \$4}'"
 alias killwine='killall -9 winedevice.exe 2>/dev/null && echo "Wine processes killed" || echo "No wine processes found"'
+alias fo="pnpm format"
+alias wifipowersaveon="sudo iw dev wlan0 set power_save on"
+alias wifipowersaveoff="sudo iw dev wlan0 set power_save off"
+alias getwifipowersave="iw dev wlan0 get power_save"
