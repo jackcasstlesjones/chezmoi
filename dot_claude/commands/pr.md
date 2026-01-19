@@ -1,0 +1,1 @@
+Write me a list of PLAIN bullet points (no subheadings, sections, headings etc.) of things we have done that I can use for my PR description. Keep it based on FUNCTIONALITY (e.g. don't just say, we added a /login api route, or we deleted a variable in a component).
