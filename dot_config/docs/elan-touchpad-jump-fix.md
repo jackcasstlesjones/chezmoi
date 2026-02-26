@@ -47,6 +47,7 @@ Both are registered as mice in Hyprland.
 - Removing MT_QUIRK_STICKY_FINGERS via sysfs quirks — no effect
 - Removing libinput quirks file (`/etc/libinput/local-overrides.quirks`) — no effect
 - Disabling `disable_while_typing` in Hyprland — no effect
+- Booting linux-lts (6.12.69) — no effect, issue persists on LTS kernel
 - Reloading hid-multitouch module — not yet tested
 
 ### Other findings
@@ -58,9 +59,8 @@ Both are registered as mice in Hyprland.
 - **libinput quirks** (from `/etc/libinput/local-overrides.quirks`): `AttrPressureRange=10:8`, `AttrPalmPressureThreshold=150`
 
 ## Next steps
-1. Reboot and select **linux-lts** (6.12.69) from bootloader to test for kernel regression
-2. If kernel regression confirmed, stick with LTS or report upstream
-3. If issue persists on LTS, consider Timeshift revert to `2026-01-13_08-22-52`
+1. Reload hid-multitouch module (`sudo modprobe -r hid_multitouch && sudo modprobe hid_multitouch`) to test if module reload clears the issue
+2. Consider Timeshift revert to `2026-01-13_08-22-52`
 
 ## References
 - https://wayland.freedesktop.org/libinput/doc/latest/touchpad-jumping-cursors.html

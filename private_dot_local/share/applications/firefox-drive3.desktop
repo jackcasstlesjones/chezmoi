@@ -1,0 +1,7 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Drive 3
+Exec=firefox https://drive.google.com/drive/u/3/home
+Icon=web-browser
