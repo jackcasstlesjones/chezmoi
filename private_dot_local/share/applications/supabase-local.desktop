@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Studio
+Comment=Open local Supabase Studio
+Exec=google-chrome-stable --app=http://127.0.0.1:54323/
+Icon=applications-development
+Type=Application
+Categories=Development;
+Keywords=supabase;local;development;studio;
