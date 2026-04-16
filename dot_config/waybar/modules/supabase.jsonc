@@ -1,0 +1,9 @@
+{
+  "custom/supabase": {
+    "exec": "~/.config/waybar/scripts/supabase-status.sh",
+    "format": " {}",
+    "return-type": "json",
+    "interval": 30,
+    "on-click": "kitty --class floating -e bash -c 'supabase stop; echo \"Stopped. Press enter to close.\"; read'"
+  }
+}

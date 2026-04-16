@@ -10,7 +10,8 @@
         "~/.config/waybar/modules/cpu-mem-temp.jsonc",
         "~/.config/waybar/modules/audio.jsonc",
         "~/.config/waybar/modules/bluetooth.jsonc",
-        "~/.config/waybar/modules/camera-power.jsonc"
+        "~/.config/waybar/modules/camera-power.jsonc",
+        "~/.config/waybar/modules/supabase.jsonc"
         // "~/.config/waybar/modules/waybar-cava.jsonc"
     ],
     // "layer": "top", // Waybar at top layer
@@ -48,6 +49,7 @@
         // "keyboard-state",
         "sway/language",
         "battery",
+        "custom/supabase",
         "custom/camera-power",
         // "battery#bat2",
         "tray",

@@ -169,7 +169,8 @@ button:hover {
 #power-profiles-daemon,
 #keyboard-state,
 #mpd,
-#custom-camera-power {
+#custom-camera-power,
+#custom-supabase {
   /* background-color: #4c566a; */
   padding: 0 10px;
   /* color: #eceff4; */
@@ -509,4 +510,15 @@ label:focus {
   /* Nord14 - Aurora */
   /* color: #2e3440; */
   /* Nord0 - Polar Night */
+}
+
+/* Supabase status module */
+#custom-supabase.running {
+  color: #a3be8c;
+  /* Nord14 - green when running */
+}
+
+#custom-supabase.stopped {
+  color: #4c566a;
+  /* Nord3 - dim when stopped */
 }
