@@ -145,6 +145,11 @@ return {
       vim.keymap.set('n', '<leader>sm', function()
         require('telescope').extensions.git_branch.git_branch()
       end, { desc = '[S]earch files diff from [M]ain' })
+
+      -- Search files different from develop branch
+      vim.keymap.set('n', '<leader>su', function()
+        builtin.git_files { git_command = { 'git', 'diff', '--name-only', 'develop' } }
+      end, { desc = '[S]earch files diff from develop' })
     end,
   },
 }
