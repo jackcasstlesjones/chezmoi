@@ -1,0 +1,7 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=fitness
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 1' --class='fitness' --app='https://claude.ai/project/019daf95-d9b2-71b0-a129-dd3eca3c2185'"
+Icon=web-browser
