@@ -7,7 +7,7 @@ MEMORY_FILE="$HOME/.cache/calc_memory"
 
 # Show recent calculations on startup
 if [ -f "$HISTORY_FILE" ]; then
-    tail -5 "$HISTORY_FILE" | sed 's/^[0-9-]* [0-9:]* | /  /'
+    cat "$HISTORY_FILE" | sed 's/^[0-9-]* [0-9:]* | /  /'
 else
     echo "No previous calculations"
 fi
