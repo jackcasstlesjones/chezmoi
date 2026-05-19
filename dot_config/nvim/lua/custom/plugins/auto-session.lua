@@ -7,6 +7,7 @@ return {
   ---@type AutoSession.Config
   opts = {
     suppressed_dirs = { '~/', '~/Projects', '~/Downloads', '/' },
+    pre_save_cmds = { 'DiffviewClose' },
     -- log_level = 'debug',
   },
 }
