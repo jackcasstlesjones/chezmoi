@@ -8,6 +8,8 @@ Don't describe every file — describe functionality and patterns. Don't oversel
 
 Base your description on the final diff against the target branch not on individual commits. Don't reference intermediate work that was created and then removed within the branch — the reviewer can't see it.
 
+Don't describe what the reviewer can see by reading the code. If the implementation is visible in the diff, skip it. Focus on WHY a decision was made, what's non-obvious, what context the reviewer needs that isn't in the files — a migration motivation, a pattern choice, a deliberate trade-off, a bug that was fixed and why it was wrong. A sentence like "`JoinOrgButton` receives `initialStatus` from the server, tracks local state with `useState`, and calls server actions via `useAsyncAction`" tells the reviewer nothing they won't see in thirty seconds. A sentence like "the layout was switched to the authenticated client so the button renders with correct state on first load without a client-side fetch" is worth writing down.
+
 ## Example output
 
 This branch overhauls the visual layer of the app — typography, colors, component styling, and navigation — without changing how data flows or how features work.
@@ -21,5 +23,3 @@ Navigation was restructured. The TopNav now shows the logo, a MegaMenu trigger t
 The SideNav was broken into smaller pieces. The old monolithic `NavMain`, `NavSecondary`, and `NavSupport` components were replaced with composable building blocks — `NavItem`, `NavCategoryItem`, `NavSectionHeading`, `NavSupportItem`. The category fetching and route matching logic is unchanged.
 
 The RightSidebar was simplified to a static layout with upcoming events and activity stats. This is all hardcoded placeholder content.
-
-No API changes, no schema changes, no new data fetching. The only new client-side state is the MegaMenu open/close toggle.
