@@ -2,6 +2,6 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Attio 3
+Name=Attio
 Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 3' --class='Attio 3' --app='https://app.attio.com/tandemcreativedev/home'"
 Icon=web-browser
