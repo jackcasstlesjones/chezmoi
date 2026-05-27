@@ -8,7 +8,11 @@ Don't describe every file — describe functionality and patterns. Don't oversel
 
 Base your description on the final diff against the target branch not on individual commits. Don't reference intermediate work that was created and then removed within the branch — the reviewer can't see it.
 
-Don't describe what the reviewer can see by reading the code. If the implementation is visible in the diff, skip it. Focus on WHY a decision was made, what's non-obvious, what context the reviewer needs that isn't in the files — a migration motivation, a pattern choice, a deliberate trade-off, a bug that was fixed and why it was wrong. A sentence like "`JoinOrgButton` receives `initialStatus` from the server, tracks local state with `useState`, and calls server actions via `useAsyncAction`" tells the reviewer nothing they won't see in thirty seconds. A sentence like "the layout was switched to the authenticated client so the button renders with correct state on first load without a client-side fetch" is worth writing down.
+**The single most important rule: if the reviewer can see it by reading the diff, do not write it.** This is the most common failure mode — describing how the code works instead of why decisions were made.
+
+Before writing any sentence, ask: does the reviewer need this to understand a decision, or would they figure it out in 30 seconds by reading the file? If the latter, cut it. This applies to everything: component wiring, data flow, standard patterns like optimistic updates, server props passed to client components, `useAsyncAction` wiring, `Promise.all` parallelisation. None of that belongs here. The description should contain things the reviewer cannot see — motivation, trade-offs, non-obvious constraints, bugs that were wrong and why.
+
+A sentence like "`JoinOrgButton` receives `initialStatus` from the server, tracks local state with `useState`, and calls server actions via `useAsyncAction`" is exactly wrong. A sentence like "the layout was switched to the authenticated client so the button renders with correct state on first load without a client-side fetch" is exactly right. The difference: one describes the code, one explains why a choice was made that isn't obvious from reading it.
 
 ## Example output
 
