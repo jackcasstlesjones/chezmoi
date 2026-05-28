@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Tandem Drafts
+Comment=Open tandem drafts in firefox
+Exec=firefox https://mail.google.com/mail/u/3/#drafts
+Icon=applications-internet
+Type=Application
+Categories=Network;WebBrowser;
+Keywords=email;drafts;tandem;
