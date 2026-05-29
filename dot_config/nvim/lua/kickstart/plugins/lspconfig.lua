@@ -20,7 +20,6 @@ return {
       -- Mason must be loaded before its dependents so we need to set it up here.
       -- NOTE: `opts = {}` is the same as calling `require('mason').setup({})`
       { 'williamboman/mason.nvim', opts = {} },
-      'williamboman/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP.
@@ -165,7 +164,10 @@ return {
       --  When you add nvim-cmp, luasnip, etc. Neovim now has *more* capabilities.
       --  So, we create new capabilities with nvim cmp, and then broadcast that to the servers.
       local capabilities = vim.lsp.protocol.make_client_capabilities()
-      capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
+      local ok, cmp_lsp = pcall(require, 'cmp_nvim_lsp')
+      if ok then
+        capabilities = vim.tbl_deep_extend('force', capabilities, cmp_lsp.default_capabilities())
+      end
 
       -- Enable the following language servers
       --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
@@ -191,10 +193,7 @@ return {
 
         --
 
-        tailwindcss = {
-          -- Tailwind CSS language server
-          -- Works with tailwind-tools.nvim plugin
-        },
+        -- tailwindcss = {},
 
         lua_ls = {
           -- cmd = { ... },
@@ -225,24 +224,11 @@ return {
       --
       -- You can add other tools here that you want Mason to install
       -- for you, so that they are available from within Neovim.
-      local ensure_installed = vim.tbl_keys(servers or {})
-      -- vim.list_extend(ensure_installed, {
-      --   'stylua', -- Used to format Lua code
-      -- })
-      require('mason-tool-installer').setup { ensure_installed = ensure_installed }
-
-      require('mason-lspconfig').setup {
-        handlers = {
-          function(server_name)
-            local server = servers[server_name] or {}
-            -- This handles overriding only values explicitly passed
-            -- by the server configuration above. Useful when disabling
-            -- certain features of an LSP (for example, turning off formatting for ts_ls)
-            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
-          end,
-        },
+      require('mason-tool-installer').setup {
+        ensure_installed = { 'lua-language-server', 'tailwindcss-language-server', 'typescript-language-server' },
       }
+
+      vim.lsp.enable(vim.tbl_keys(servers))
     end,
   },
 }
