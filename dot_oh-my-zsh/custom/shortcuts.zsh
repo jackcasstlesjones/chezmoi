@@ -39,3 +39,4 @@ alias scan="scanimage -d 'escl:https://192.168.0.137:443' --format=png -o ~/scan
 alias bat="cat ~/battery.log"
 alias sstart="supabase start"
 alias sstop="supabase stop --all"
+alias thn="thunar ."
