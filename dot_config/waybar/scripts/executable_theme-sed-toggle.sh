@@ -46,5 +46,7 @@ fi
 echo "$NEXT_INDEX" > "$STATE_FILE"
 
 # Reload
+WALLPAPER_PATH="$HOME/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]}"
+hyprctl hyprpaper preload "$WALLPAPER_PATH"
+hyprctl hyprpaper wallpaper ",$WALLPAPER_PATH"
 pkill -SIGUSR2 waybar
-pkill hyprpaper && hyprpaper &
