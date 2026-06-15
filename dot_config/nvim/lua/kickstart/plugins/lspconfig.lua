@@ -197,7 +197,7 @@ return {
 				ts_ls = {},
 				jsonls = {},
 				clangd = {},
-				emmet_ls = {},
+				emmet_language_server = {},
 
 				--
 
@@ -237,9 +237,14 @@ return {
 					"lua-language-server",
 					"tailwindcss-language-server",
 					"typescript-language-server",
+					"emmet-language-server",
 				},
 			})
 
+			for server_name, server_config in pairs(servers) do
+				server_config.capabilities = vim.tbl_deep_extend("force", capabilities, server_config.capabilities or {})
+				vim.lsp.config(server_name, server_config)
+			end
 			vim.lsp.enable(vim.tbl_keys(servers))
 		end,
 	},
