@@ -97,7 +97,7 @@ if [ -n "$five_hr" ]; then
 
   if [ -n "$seven_day" ]; then
     seven_int=$(printf '%.0f' "$seven_day")
-    label=" ${pct_int}%${reset_label} 7d:${seven_int}% "
+    label=" ${pct_int}%${reset_label} 7d ${seven_int}% "
   else
     label=" ${pct_int}%${reset_label} "
   fi
