@@ -1,5 +1,6 @@
 return {
 	"artemave/workspace-diagnostics.nvim",
+	enabled = false,
 	config = function()
 		-- Setup workspace diagnostics
 		require("workspace-diagnostics").setup({
