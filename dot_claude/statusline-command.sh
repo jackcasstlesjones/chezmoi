@@ -49,7 +49,8 @@ bold=$(printf '\033[1m')
 
 BG_DIR=60     ; FG_DIR=255    # Nord deep-blue frost, snow text
 BG_MODEL=139  ; FG_MODEL=236  # Nord purple aurora, polar-night text
-BG_USAGE=131  ; FG_USAGE=255  # Nord red aurora, snow text
+BG_USAGE=131  ; FG_USAGE=255  # Nord red aurora, snow text (5h)
+BG_WEEK=173   ; FG_WEEK=236   # Nord orange aurora, polar-night text (7d)
 
 # Powerline right chevron (U+E0B0) — same glyph lualine uses for section separators.
 ARROW=$(printf '\xee\x82\xb0')
@@ -95,14 +96,13 @@ if [ -n "$five_hr" ]; then
     fi
   fi
 
-  if [ -n "$seven_day" ]; then
-    seven_int=$(printf '%.0f' "$seven_day")
-    label=" ${pct_int}%${reset_label} 7d ${seven_int}% "
-  else
-    label=" ${pct_int}%${reset_label} "
-  fi
+  add_segment " ${pct_int}%${reset_label} " "$BG_USAGE" "$FG_USAGE"
+fi
 
-  add_segment "$label" "$BG_USAGE" "$FG_USAGE"
+# ── Segment: Account usage limit (7-day rolling window) ──────────────────────
+if [ -n "$seven_day" ]; then
+  seven_int=$(printf '%.0f' "$seven_day")
+  add_segment " 7d ${seven_int}% " "$BG_WEEK" "$FG_WEEK"
 fi
 
 # ── Render ────────────────────────────────────────────────────────────────────
