@@ -24,13 +24,11 @@ elif [ -f "$RATE_CACHE" ]; then
   five_hr_resets_raw=$(jq -r '.five_hr_resets // empty' < "$RATE_CACHE")
 fi
 
-# ── Path shortening ───────────────────────────────────────────────────────────
-if [ -n "$cwd" ]; then
-  short_cwd="${cwd/#$HOME/\~}"
-else
-  short_cwd="$(pwd | sed "s|$HOME|~|")"
+# ── Path: basename only ───────────────────────────────────────────────────────
+if [ -z "$cwd" ]; then
   cwd="$(pwd)"
 fi
+short_cwd="${cwd##*/}"
 
 # ── Model: first word only ────────────────────────────────────────────────────
 model_short="${model%% *}"
