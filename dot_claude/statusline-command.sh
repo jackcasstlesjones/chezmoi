@@ -8,6 +8,7 @@ input=$(cat | tee /tmp/claude-statusline-input.json)
 # ── Raw data ──────────────────────────────────────────────────────────────────
 cwd=$(echo "$input"       | jq -r '.cwd // .workspace.current_dir // empty')
 model=$(echo "$input"     | jq -r '.model.display_name // empty')
+git_branch=$(git -C "${cwd:-$(pwd)}" symbolic-ref --short HEAD 2>/dev/null || true)
 five_hr=$(echo "$input"   | jq -r '.rate_limits.five_hour.used_percentage // empty')
 seven_day=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
 five_hr_resets_raw=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
@@ -33,6 +34,11 @@ short_cwd="${cwd##*/}"
 # ── Model: first word only ────────────────────────────────────────────────────
 model_short="${model%% *}"
 
+# ── Branch: truncate to 20 chars ─────────────────────────────────────────────
+if [ "${#git_branch}" -gt 20 ]; then
+  git_branch="${git_branch:0:20}"
+fi
+
 # ── ANSI helpers ──────────────────────────────────────────────────────────────
 fg() { printf '\033[38;5;%sm' "$1"; }
 bg() { printf '\033[48;5;%sm' "$1"; }
@@ -46,6 +52,7 @@ bold=$(printf '\033[1m')
 # Aurora      : 131 #bf616a · 173 #d08770 · 222 #ebcb8b · 108 #a3be8c · 139 #b48ead
 
 BG_DIR=60     ; FG_DIR=255    # Nord deep-blue frost, snow text
+BG_BRANCH=108 ; FG_BRANCH=236 # Nord green aurora, polar-night text
 BG_MODEL=139  ; FG_MODEL=236  # Nord purple aurora, polar-night text
 BG_USAGE=131  ; FG_USAGE=255  # Nord red aurora, snow text (5h)
 BG_WEEK=173   ; FG_WEEK=236   # Nord orange aurora, polar-night text (7d)
@@ -67,6 +74,11 @@ add_segment() {
 
 # ── Segment: Directory ────────────────────────────────────────────────────────
 add_segment " ${short_cwd} " "$BG_DIR" "$FG_DIR"
+
+# ── Segment: Git branch ───────────────────────────────────────────────────────
+if [ -n "$git_branch" ]; then
+  add_segment " ${git_branch} " "$BG_BRANCH" "$FG_BRANCH"
+fi
 
 # ── Segment: Model ────────────────────────────────────────────────────────────
 if [ -n "$model_short" ]; then
