@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Find
+Exec=/home/jack/.config/scripts/fuzzel-find-dir.sh
+Terminal=false
+Icon=system-search
+Categories=Utility;
