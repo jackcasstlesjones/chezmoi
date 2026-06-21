@@ -91,7 +91,7 @@ if [ -n "$five_hr" ]; then
   pct_int=$(printf '%.0f' "$five_hr")
 
   reset_label=""
-  if [ -n "$five_hr_resets" ] && [ "$pct_int" -ge 70 ]; then
+  if [ -n "$five_hr_resets" ]; then
     now=$(date +%s)
     diff=$(( five_hr_resets - now ))
     if [ "$diff" -gt 0 ]; then
@@ -101,7 +101,7 @@ if [ -n "$five_hr" ]; then
       if [ "$hrs" -gt 0 ]; then
         reset_label=" (${hrs}h ${mins}m)"
       else
-        reset_label=" (resets in ${mins}m)"
+        reset_label=" (${mins}m)"
       fi
     fi
   fi
