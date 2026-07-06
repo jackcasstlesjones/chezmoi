@@ -1,0 +1,7 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=ozClaude
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 5' --class='ozClaude' --app='https://claude.ai'"
+Icon=web-browser

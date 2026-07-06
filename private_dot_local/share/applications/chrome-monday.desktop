@@ -3,5 +3,5 @@
 Version=1.0
 Type=Application
 Name=Monday
-Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 1' --class='Monday' --app='https://monday.com/'"
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 2' --class='Monday' --app='https://monday.com/'"
 Icon=web-browser
