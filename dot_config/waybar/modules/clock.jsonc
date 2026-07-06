@@ -1,7 +1,7 @@
 {
     "custom/clock": {
         "interval": 1,
-        "exec": "printf '%s / LON %s  %s' \"$(TZ=Etc/GMT+7 date +%H:%M:%S)\" \"$(TZ=Europe/London date +%H:%M:%S)\" \"$(TZ=Etc/GMT+7 date '+%A %d-%m-%Y')\"",
+        "exec": "printf '%s / LON %s  %s' \"$(TZ=Etc/GMT+7 date +%H:%M:%S)\" \"$(TZ=Europe/London date +%H:%M:%S)\" \"$(TZ=Etc/GMT+7 date '+%A %d-%m-%Y')\"",
         "tooltip": false
     }
 }
