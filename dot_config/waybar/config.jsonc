@@ -26,7 +26,7 @@
     // Choose the order of the modules
     "modules-left": [
         // "hyprland/workspaces",
-        "clock",
+        "custom/clock",
         "custom/hostname",
         "custom/media",
         "custom/cava"

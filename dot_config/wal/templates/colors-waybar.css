@@ -21,6 +21,7 @@
 
 /* Waybar module styling using pywal colors */
 #clock,
+#custom-clock,
 #battery,
 #cpu,
 #bluetooth,
@@ -69,9 +70,10 @@
   background-color: @color4;
 }}
 
-#clock {{
+#clock,
+#custom-clock {{
   border: @color4 2px solid;
-  
+
 }}
 
 #workspaces button:hover {{

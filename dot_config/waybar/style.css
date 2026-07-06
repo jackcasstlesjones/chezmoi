@@ -151,6 +151,7 @@ button:hover {
 /* Nord Theme */
 /* Module backgrounds now controlled by theme files */
 #clock,
+#custom-clock,
 #battery,
 #cpu,
 #bluetooth,
@@ -214,7 +215,8 @@ button:hover {
 }
 
 /* Nord Theme */
-#clock {
+#clock,
+#custom-clock {
   /* border: white 1px solid; */
   letter-spacing: 2px;
   /* font-weight: 900; */
