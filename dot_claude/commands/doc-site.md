@@ -56,8 +56,41 @@ Work on top of the existing Astro scaffold (`src/pages/`, `src/layouts/`, `publi
 ### If "Roadmap"
 
 - Single page: `src/pages/index.astro`.
-- Structure: hero (kicker / title / lede) → vertical timeline of phases with numbered nodes and per-phase cards (deliverables, dates, owners, RAG chips if present in the source). Model the visual on the current-state amagi client-journey timeline: `.journey::before` gradient spine, `.stage-num` circle nodes, `.stage-card` bodies, `.stage-list` bullet points, `.status-chip` badges.
+- Structure: hero (kicker / title / lede) → **changelog** (see below) → vertical timeline of phases with numbered nodes and per-phase cards (deliverables, dates, owners, RAG chips if present in the source). Model the visual on the current-state amagi client-journey timeline: `.journey::before` gradient spine, `.stage-num` circle nodes, `.stage-card` bodies, `.stage-list` bullet points, `.status-chip` badges.
 - No sibling pages unless the source materials genuinely include distinct off-roadmap docs (e.g. a compliance or security appendix). If they do, add them as extra `src/pages/<slug>.astro` files and link them from the roadmap footer.
+
+#### Changelog section
+
+Every roadmap has a collapsible **Changelog** section sitting between the hero and the timeline. Model it on the CHIRPdb roadmap:
+
+- Section is `<section class="changelog">` with a button toggle (`aria-expanded`, `aria-controls`), a "Last updated &lt;date&gt;" caption, and a hidden `<table class="changelog__table">` body.
+- Table columns: **Date · Description · Author**.
+- Rows are ordered newest first.
+- Rows with `class="is-milestone"` and a `<span class="changelog__milestone-tag">Milestone</span>` prefix mark structural events (first publish, phase budgets defined, package count changed, etc.).
+- Include a small inline `<script>` that flips `hidden` and `aria-expanded` when the toggle is clicked.
+
+**Populate the changelog from git history — but filter aggressively:**
+
+1. Run `git log --format='%h %ai %an %s' --reverse` on the repo to walk from first commit to HEAD.
+2. For each commit, run `git show --stat` (or `git diff <commit>^ <commit>`) and decide if it changed **roadmap content** or just **rendering**.
+3. **Include** commits that:
+   - Add, remove, rename, or reorder roadmap items / phases / steps / packages.
+   - Change scope, deliverables, day-budgets, owners, dates, or dependencies.
+   - Split or merge items. Renumber steps. Change a step's "kind" (e.g. Built → AI).
+   - Add or move milestones.
+   - First-publish commits ("roadmap first published: N steps across M packages").
+4. **Exclude** commits that only change:
+   - CSS, colours, borders, spacing, delimiters, font sizes.
+   - Rendering / layout / template refactors, componentisation, deduping.
+   - Adding or removing hero blocks, page chrome, headers, footers.
+   - Fixing typos, punctuation, or broken links.
+   - Build / deploy / dependency / lockfile / workflow changes.
+   - The changelog section itself.
+5. Write each surviving commit as one row: **date** (from `%ai`, formatted as "25 Jul 2026"), **description** (a plain-English sentence about the roadmap change — write it fresh from the diff, do NOT copy the commit message), **author** (from `%an`).
+6. If a commit's diff is ambiguous (touches both content and styling), only the content change goes in the row.
+7. If git history is empty or has only the initial Astro-template commit, seed the changelog with a single "Roadmap first published" row dated today.
+
+Set the "Last updated" caption to the newest included row's date.
 
 ### If "Multi-page docs"
 
