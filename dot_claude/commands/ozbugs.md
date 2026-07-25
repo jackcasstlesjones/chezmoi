@@ -70,10 +70,11 @@ Group bugs by the `bug_status` (Phase) column in this order, skipping empty grou
 2. **Ready for Dev**
 3. **Backlog**
 4. **Clarification**
-5. **Review & Deploy**
-6. **Ready for QA**
-7. **In Test**
-8. **Fixed** — collapse to a count unless the user asks for the list
+5. Code Review
+6. Deploy Queue
+7. **Ready for QA**
+8. **In Test**
+9. **Fixed** — collapse to a count unless the user asks for the list
 
 For each bug show: `BOZN-### — title — Priority`. Sort within a group by priority (Critical → High → Medium → Low → none).
 
