@@ -138,6 +138,10 @@ Do not hand-roll types at a level that could be derived from the generated schem
 
 ---
 
+### 7. Zod schemas must be centralised and re-used instead of handrolled
+
+Check that any changes to zod schemas aren't duplicating existing functionality or providing bespoke solutions where we don't need them
+
 ## Output format
 
 List findings under a single "Type issues" heading. For each issue:

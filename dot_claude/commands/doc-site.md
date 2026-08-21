@@ -47,11 +47,12 @@ Work on top of the existing Astro scaffold (`src/pages/`, `src/layouts/`, `publi
 
 ### Common to both output types
 
-- `src/layouts/Layout.astro` — one shared layout. Takes a `title` prop. Emits `<html lang="en">`, `<head>` (charset, viewport, `<title>{title}</title>`, `<link rel="stylesheet" href={\`${base}styles.css\`} />`, favicon), and `<slot />` for the body. Use `const base = import.meta.env.BASE_URL;` — this is what makes assets resolve correctly under `/repo-name/`.
+- `src/layouts/Layout.astro` — one shared layout. Takes a `title` prop. Emits `<html lang="en">`, `<head>` (charset, viewport, `<title>{title}</title>`, `<link rel="stylesheet" href={\`${base}/styles.css\`} />`, favicon), and `<slot />` for the body.
+- **`base` handling — read this carefully.** In Astro, `import.meta.env.BASE_URL` is inconsistent about trailing slashes across versions (v7.1.3 returns `/repo-name` without a trailing slash; other versions return `/repo-name/`). Concatenating `${base}auth.js` produced `/repo-nameauth.js` on a real deploy — broken. **Always** normalise: `const base = import.meta.env.BASE_URL.replace(/\/$/, '');` and then reference assets as `${base}/auth.js`, `${base}/styles.css`, `${base}/<slug>`. This is the pattern for the Layout AND every page that emits a link.
 - `public/styles.css` — global stylesheet with CSS variables for the palette (light — and dark if the source docs suggest one, via `@media (prefers-color-scheme: dark)`), base body typography, and shared primitives only (`.brand`, `.brand-mark`, hero `em` accent). Layout-specific styles do NOT live here.
 - Every page is **illustrated**. These sites lean visual — SVG flowcharts, timeline spines, hierarchy trees, badge-style stage numbers, dashed off-ramp lanes, colour-coded actor dots. Look at the source content, then design the illustration around it. Do not ship a text-only page unless the source really is nothing but prose.
 - Per-page CSS lives inside the page's own `<style is:global>` block, not the shared stylesheet.
-- Interior links between pages use `${base}<slug>` (from `import.meta.env.BASE_URL`) so they work under the GH Pages base path.
+- Interior links between pages use `${base}/<slug>` (with the normalised `base` above) so they work under the GH Pages base path.
 
 ### If "Roadmap"
 
@@ -158,6 +159,19 @@ jobs:
 
 The action auto-detects the package manager from the lockfile — no manual pnpm/npm config needed.
 
+### Preflight — `pnpm-workspace.yaml`
+
+If the project has a `pnpm-workspace.yaml` (Astro's minimal template ships one), it MUST declare a `packages:` field, or the CI `pnpm install` step fails with *"packages field missing or empty from pnpm-workspace.yaml"* under pnpm 9+. Local pnpm may be lenient and hide this until CI hits it.
+
+Verify the file starts with (or contains) at least:
+
+```yaml
+packages:
+  - .
+```
+
+Keep any other keys already present (e.g. `allowBuilds:`) — just add `packages:` if missing. If the file doesn't exist at all, don't create one; only patch what's there.
+
 ### Manual steps to tell the user at the end
 
 Print (do NOT do these yourself):
@@ -171,7 +185,19 @@ Print (do NOT do these yourself):
 
 ## Phase 5 — Smoke test
 
-Run `pnpm dev` in the background (Astro dev server on port 4321). Fetch the landing page with `curl -s http://localhost:4321/<repo-name>/ | head -40` and confirm it responds with the expected `<title>`. Report the local URL to the user.
+Run `pnpm dev` in the background (Astro dev server on port 4321). Fetch the landing page with `curl -s http://localhost:4321/<repo-name>/ | head -40` and confirm it responds with the expected `<title>`.
+
+Then run `pnpm build` and grep the emitted HTML for concatenated-base bugs:
+
+```bash
+pnpm build && \
+  grep -rEh '(src|href)="[^"]*(\.js|\.css|\.svg|/[a-z-]+)"' dist/ | \
+  grep -E '/<repo-name>[a-zA-Z]' && echo "BROKEN BASE CONCAT" || echo "base paths OK"
+```
+
+If the grep matches (paths like `/repo-nameauth.js` with no separator slash), fix the Layout / page — see the base handling note in Phase 3. Do NOT ship until this is clean.
+
+Report the local URL to the user.
 
 ---
 
