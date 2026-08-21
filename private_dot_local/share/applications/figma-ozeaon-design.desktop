@@ -1,0 +1,7 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Figma OZEAON Design
+Exec=firefox https://www.figma.com/design/Y7P66cqHVcJYOw83eqAk1m/OZEAON-DESIGN-2.0?node-id=382-7452&p=f&m=dev
+Icon=web-browser

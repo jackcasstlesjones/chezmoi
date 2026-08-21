@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=Tandem
-Comment=Open tandem email in firefox
-Exec=firefox https://mail.google.com/mail/u/1/#inbox
+Name=Gmail
+Comment=Open gmail in firefox
+Exec=firefox https://mail.google.com/mail/u/0/#inbox
 Icon=applications-internet
 Type=Application
 Categories=Network;WebBrowser;

@@ -3,5 +3,5 @@
 Version=1.0
 Type=Application
 Name=Drive 3
-Exec=firefox https://drive.google.com/drive/u/3/home
+Exec=firefox https://drive.google.com/drive/u/1/home
 Icon=web-browser
