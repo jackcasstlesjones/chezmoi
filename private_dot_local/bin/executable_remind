@@ -1,0 +1,133 @@
+#!/bin/bash
+
+# Schedule a sticky mako notification, either at a 24h clock time or after a delay.
+#
+#   remind 14:30 "Standup"      at the next 14:30 (tomorrow if already past)
+#   remind 30m "Check the oven" in 30 minutes
+#   remind 1h30m "Call back"    in 1 hour 30 minutes
+#   remind 90 "Stretch"         bare numbers are minutes
+#   remind list                 show pending reminders
+#   remind cancel <unit|all>    drop a pending reminder
+#
+# Each reminder is a transient systemd user timer, so it survives closing the
+# terminal but not a reboot.
+
+set -euo pipefail
+
+usage() {
+    sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'
+    exit "${1:-0}"
+}
+
+# Turn a time spec into an absolute epoch second, or fail.
+parse_target() {
+    local spec="$1" now target rest total num unit
+    now=$(date +%s)
+
+    case "$spec" in
+        # 24 hour clock: 9:00, 14:30
+        [0-9]:[0-9][0-9] | [0-9][0-9]:[0-9][0-9])
+            target=$(date -d "today $spec" +%s 2>/dev/null) || return 1
+            # Already gone today, so mean tomorrow.
+            if [ "$target" -le "$now" ]; then
+                target=$(date -d "tomorrow $spec" +%s)
+            fi
+            ;;
+        # Relative: 30m, 2h, 1h30m, 45s, +10m, or a bare number of minutes
+        +* | [0-9]*)
+            rest="${spec#+}"
+            total=0
+            while [[ "$rest" =~ ^([0-9]+)([hms]?)(.*)$ ]]; do
+                num="${BASH_REMATCH[1]}"
+                unit="${BASH_REMATCH[2]}"
+                rest="${BASH_REMATCH[3]}"
+                case "$unit" in
+                    h) total=$((total + num * 3600)) ;;
+                    s) total=$((total + num)) ;;
+                    *) total=$((total + num * 60)) ;;
+                esac
+            done
+            [ -n "$rest" ] && return 1
+            [ "$total" -eq 0 ] && return 1
+            target=$((now + total))
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    echo "$target"
+}
+
+list_reminders() {
+    local units unit desc next
+    units=$(systemctl --user list-units --type=timer --all --no-legend 'remind-*.timer' | awk '{print $1}')
+
+    if [ -z "$units" ]; then
+        echo "No pending reminders"
+        return
+    fi
+
+    while read -r unit; do
+        [ -z "$unit" ] && continue
+        desc=$(systemctl --user show "$unit" -p Description --value)
+        next=$(systemctl --user show "$unit" -p NextElapseUSecRealtime --value)
+        printf '%-28s %s\n    %s\n' "$unit" "$next" "$desc"
+    done <<< "$units"
+}
+
+cancel_reminder() {
+    local target="$1" units unit
+
+    if [ "$target" = "all" ]; then
+        units=$(systemctl --user list-units --type=timer --all --no-legend 'remind-*.timer' | awk '{print $1}')
+    else
+        units="${target%.timer}.timer"
+    fi
+
+    if [ -z "$units" ]; then
+        echo "No pending reminders"
+        return
+    fi
+
+    while read -r unit; do
+        [ -z "$unit" ] && continue
+        systemctl --user stop "$unit" 2>/dev/null || true
+        systemctl --user stop "${unit%.timer}.service" 2>/dev/null || true
+        echo "Cancelled $unit"
+    done <<< "$units"
+}
+
+# --- main ---
+
+case "${1:-}" in
+    "" | -h | --help | help) usage ;;
+    list | ls) list_reminders; exit 0 ;;
+    cancel | rm) cancel_reminder "${2:-all}"; exit 0 ;;
+esac
+
+spec="$1"
+shift
+message="${*:-Reminder}"
+
+if ! target=$(parse_target "$spec"); then
+    echo "remind: don't understand time '$spec'" >&2
+    echo >&2
+    usage 1 >&2
+fi
+
+unit="remind-$(date -d "@$target" +%H%M)-$RANDOM"
+
+systemd-run --user --quiet \
+    --unit="$unit" \
+    --description="$message" \
+    --on-calendar="$(date -d "@$target" '+%Y-%m-%d %H:%M:%S')" \
+    --timer-property=AccuracySec=1s \
+    --timer-property=RemainAfterElapse=no \
+    notify-send --app-name=Reminder --urgency=critical --expire-time=0 \
+    "$message" "$(date -d "@$target" '+%H:%M')"
+
+printf 'Reminder set for %s (%s) — %s\n' \
+    "$(date -d "@$target" '+%H:%M')" \
+    "$(date -d "@$target" '+%a %d %b')" \
+    "$unit"
