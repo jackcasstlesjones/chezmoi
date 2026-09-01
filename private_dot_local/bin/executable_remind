@@ -8,6 +8,7 @@
 #   remind 90 "Stretch"         bare numbers are minutes
 #   remind list                 show pending reminders
 #   remind cancel <unit|all>    drop a pending reminder
+#   remind move [on|off]        toggle the :00 and :30 move nudge
 #
 # Each reminder is a transient systemd user timer, so it survives closing the
 # terminal but not a reboot.
@@ -15,7 +16,7 @@
 set -euo pipefail
 
 usage() {
-    sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -76,6 +77,43 @@ list_reminders() {
     done <<< "$units"
 }
 
+MOVE_UNIT=move-reminder.timer
+
+move_nudge() {
+    local action="${1:-toggle}"
+
+    if [ "$action" = "toggle" ]; then
+        if systemctl --user is-enabled --quiet "$MOVE_UNIT" 2>/dev/null; then
+            action=off
+        else
+            action=on
+        fi
+    fi
+
+    case "$action" in
+        on)
+            systemctl --user enable --now "$MOVE_UNIT"
+            echo "Move nudge ON — every :00 and :30"
+            ;;
+        off)
+            systemctl --user disable --now "$MOVE_UNIT"
+            echo "Move nudge OFF"
+            ;;
+        status)
+            if systemctl --user is-enabled --quiet "$MOVE_UNIT" 2>/dev/null; then
+                # These are monotonic timers, so read the resolved time from list-timers.
+                echo "Move nudge ON — next $(systemctl --user list-timers "$MOVE_UNIT" --no-legend | awk '{print $2, $3, $4}')"
+            else
+                echo "Move nudge OFF"
+            fi
+            ;;
+        *)
+            echo "remind move: expected on, off or status" >&2
+            return 1
+            ;;
+    esac
+}
+
 cancel_reminder() {
     local target="$1" units unit
 
@@ -104,6 +142,7 @@ case "${1:-}" in
     "" | -h | --help | help) usage ;;
     list | ls) list_reminders; exit 0 ;;
     cancel | rm) cancel_reminder "${2:-all}"; exit 0 ;;
+    move) move_nudge "${2:-toggle}"; exit 0 ;;
 esac
 
 spec="$1"
