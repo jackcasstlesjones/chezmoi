@@ -100,6 +100,18 @@ plugins=(sudo git zsh-autosuggestions zsh-syntax-highlighting)
 
 source $ZSH/oh-my-zsh.sh
 
+# --- History: safe concurrent writes -------------------------------------
+# Must come after oh-my-zsh, which sets HISTSIZE/SAVEHIST and share_history
+# in lib/history.zsh. Without fcntl locking, concurrent shells rewriting the
+# history file interleave and punch NUL bytes into it -> "corrupt history
+# file" on startup, which also trips p10k's instant-prompt warning.
+setopt HIST_FCNTL_LOCK        # lock HISTFILE with fcntl(2); safe parallel writes
+setopt HIST_REDUCE_BLANKS     # tidy up whitespace before saving
+unsetopt HIST_EXPIRE_DUPS_FIRST  # avoid full-file rewrites on every exit
+HISTSIZE=200000
+SAVEHIST=200000
+# -------------------------------------------------------------------------
+
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"
@@ -134,3 +146,11 @@ source $ZSH/oh-my-zsh.sh
 
 # Initialize zoxide
 eval "$(zoxide init zsh)"
+
+# pnpm
+export PNPM_HOME="/home/jack/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+esac
+# pnpm end
