@@ -1,9 +1,17 @@
+# Reference copy of /etc/keyd/main.conf.
+# The real file is root-owned and outside chezmoi; `keyd-alt-caps` installs
+# the [alt] layer into it. Reload after any manual edit: sudo keyd reload
+
 [ids]
 *
 
 [main]
 # Caps lock: tap for escape, hold as hyper layer
 capslock = overload(hyper, esc)
+
+[alt]
+# Alt + Caps Lock = real Caps Lock (for Bitwig)
+capslock = capslock
 
 [hyper:C-S-M-A]
 # This layer applies Ctrl+Shift+Alt+Super to all keys by default
