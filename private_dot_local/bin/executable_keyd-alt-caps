@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Add the Alt+CapsLock -> real CapsLock binding to keyd and reload it.
+#
+# /etc/keyd/main.conf is root-owned and outside chezmoi, hence the sudo.
+# Safe to re-run: does nothing if the [alt] layer is already there.
+
+set -euo pipefail
+
+CONF=/etc/keyd/main.conf
+
+if grep -q '^\[alt\]' "$CONF"; then
+    echo "keyd-alt-caps: [alt] layer already in $CONF, nothing to do"
+    exit 0
+fi
+
+sudo sed -i.bak '/^\[hyper:/i [alt]\n# Alt + Caps Lock = real Caps Lock (for Bitwig)\ncapslock = capslock\n' "$CONF"
+
+# A broken keyd config makes the keyboard unusable, so roll back if it fails.
+if ! keyd check "$CONF"; then
+    echo "keyd-alt-caps: config invalid, restoring $CONF.bak" >&2
+    sudo mv "$CONF.bak" "$CONF"
+    exit 1
+fi
+
+sudo keyd reload
+grep -A2 '^\[alt\]' "$CONF"
