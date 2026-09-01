@@ -1,0 +1,4 @@
+[Service]
+Type=oneshot
+# Fixed --replace-id so an unclicked nudge is replaced rather than stacking up.
+ExecStart=/usr/bin/notify-send --app-name=Reminder --urgency=critical --expire-time=0 --replace-id=9001 "Get up and move" "Stretch, walk, look away from the screen"
