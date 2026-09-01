@@ -1,6 +1,60 @@
 {
+  "model": "opus[1m]",
+  "theme": "dark",
   "permissions": {
-    "allow": ["Read"]
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(fd:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(tree:*)",
+      "Bash(stat:*)",
+      "Bash(file:*)",
+      "Bash(du:*)",
+      "Bash(df:*)",
+      "Bash(which:*)",
+      "Bash(command -v:*)",
+      "Bash(realpath:*)",
+      "Bash(basename:*)",
+      "Bash(dirname:*)",
+      "Bash(diff:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(cut:*)",
+      "Bash(jq:*)",
+      "Bash(echo:*)",
+      "Bash(pwd)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git blame:*)",
+      "Bash(git stash list:*)",
+      "Bash(chezmoi status:*)",
+      "Bash(chezmoi diff:*)",
+      "Bash(chezmoi managed:*)",
+      "Bash(chezmoi data:*)",
+      "Bash(chezmoi source-path:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh api:*)",
+      "Bash(hyprctl:*)",
+      "Bash(systemctl status:*)",
+      "Bash(journalctl:*)"
+    ]
   },
   "includeCoAuthoredBy": false,
   "worktree": {
@@ -14,7 +68,19 @@
     "ANTHROPIC_BASE_URL": "",
     "ANTHROPIC_AUTH_TOKEN": "",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-7"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001"
+  },
+  "enabledPlugins": {
+    "claude-mem@thedotmack": true,
+    "discord@claude-plugins-official": true,
+    "i-have-adhd@i-have-adhd": true
+  },
+  "extraKnownMarketplaces": {
+    "i-have-adhd": {
+      "source": {
+        "source": "github",
+        "repo": "ayghri/i-have-adhd"
+      }
+    }
   }
 }
