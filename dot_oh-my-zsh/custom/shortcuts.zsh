@@ -15,7 +15,15 @@ alias nts="cd ~/obsidian/jacks-vault/ && nvim -O scratchpad.md home.md"
 alias dev="pnpm dev"
 alias fe="pnpm dev:frontend"
 alias be="pnpm dev:backend"
-alias yy="yazi"
+function y() {
+	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+	yazi "$@" --cwd-file="$tmp"
+	IFS= read -r -d '' cwd < "$tmp"
+	[ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+	rm -f -- "$tmp"
+}
+alias yy="y"
+alias fm="y"
 alias supanext="npx create-next-app --use-pnpm --src-dir --eslint --tailwind --app  -e with-supabase"
 alias initnvm="source /usr/share/nvm/init-nvm.sh"
 alias upd="yay -Syu"
