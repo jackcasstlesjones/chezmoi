@@ -34,36 +34,51 @@ Record the repo root — Phase 3 needs it.
 
 ## Phase 1 — Find the bugs
 
+**Run this whole phase in a subagent.** The assignee filter returns well over a hundred
+items and at most 10 survive the cap, so fetching the board into this context spends the
+budget on rows that get discarded. Spawn one `general-purpose` agent and let only the
+capped batch come back.
+
+Prompt it with:
+
+```
 Load the Monday items tool:
 
+  ToolSearch({ query: "select:mcp__claude_ai_monday_com__get_board_items_page", max_results: 1 })
+
+Step 1 — candidates, without descriptions. Descriptions across the whole board overflow the
+tool's token limit, so leave them out until the batch is capped:
+
+  get_board_items_page({
+    boardId: 5015597434,
+    filters: [
+      { columnId: "multiple_person_mky2f1n9", compareValue: ["person-90359998"], operator: "any_of" }
+    ],
+    includeColumns: true,
+    includeItemDescription: false,
+    columnIds: ["name", "item_id", "bug_status", "priority_1"],
+    limit: 200
+  })
+
+Filter client-side to items whose `bug_status` (Phase) is exactly "Ready for Dev" — do not
+filter on the status label in the query, the label ids drift. Sort by `priority_1`:
+Critical -> High -> Medium -> Low -> none. Cap at 10.
+
+Step 2 — descriptions for the survivors only. Query again with
+`includeItemDescription: true`, filtered to just the capped `item_id`s.
+
+If Monday is not authenticated, report exactly that and stop.
+
+Report back ONLY the following. No board statistics, no account of what you discarded, no
+commentary on the tickets:
+
+  - one line per bug: `BOZN-### | priority | title`
+  - each bug's description below its id, verbatim, or `(no description)`
+  - a final line: `N ready for dev, M over the cap`
 ```
-ToolSearch select:mcp__claude_ai_monday_com__get_board_items_page
-```
 
-Fetch every bug assigned to Jack on board `5015597434`:
-
-```
-get_board_items_page({
-  boardId: 5015597434,
-  filters: [
-    { columnId: "multiple_person_mky2f1n9", compareValue: ["person-90359998"], operator: "any_of" }
-  ],
-  includeColumns: true,
-  includeItemDescription: true,
-  columnIds: ["name", "item_id", "bug_status", "color_mkynpgct", "priority_1", "people1", "multiple_person_mky2f1n9", "text_mkyjcbrw"],
-  limit: 200
-})
-```
-
-Then filter **client-side** to items whose `bug_status` (Phase) is exactly **Ready for Dev**.
-Do not filter on the status label in the query — the label ids drift.
-
-Sort by `priority_1`: Critical → High → Medium → Low → none.
-
-**Cap at 10.** If more than 10 come back, take the top 10 by priority and note which were
-left behind. If zero come back, say so and stop — nothing to do.
-
-If Monday is not authenticated, tell the user to run `/mcp` and pick **claude.ai monday.com**.
+If the agent reports zero bugs, say so and stop — nothing to do. If it reports that Monday
+is not authenticated, tell the user to run `/mcp` and pick **claude.ai monday.com**.
 
 ---
 
