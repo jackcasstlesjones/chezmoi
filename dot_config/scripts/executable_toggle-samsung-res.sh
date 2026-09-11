@@ -5,10 +5,10 @@ current_res=$(hyprctl monitors -j | jq -r '.[] | select(.description | contains(
 
 if [ "$current_res" = "3840x2160" ]; then
     # Switch to 1080p
-    hyprctl keyword monitor "desc:Samsung Electric Company U32J59x HNMN600224,1920x1080@60,0x0,1"
+    hyprctl eval 'hl.monitor({ output="desc:Samsung Electric Company U32J59x HNMN600224", mode="1920x1080@60", position="0x0", scale=1 })'
     notify-send "Monitor Resolution" "Switched to 1920x1080" -t 2000
 else
     # Switch to 4K with scaling
-    hyprctl keyword monitor "desc:Samsung Electric Company U32J59x HNMN600224,3840x2160@60,0x0,1.33"
+    hyprctl eval 'hl.monitor({ output="desc:Samsung Electric Company U32J59x HNMN600224", mode="3840x2160@60", position="0x0", scale=1.33 })'
     notify-send "Monitor Resolution" "Switched to 3840x2160 (1.33x scale)" -t 2000
 fi

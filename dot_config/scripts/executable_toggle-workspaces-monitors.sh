@@ -32,5 +32,5 @@ fi
 
 # Move all workspaces to the target monitor
 for ws in $workspaces; do
-    hyprctl dispatch moveworkspacetomonitor name:$ws $target_monitor
+    hyprctl dispatch "hl.dsp.workspace.move({ workspace = \"name:$ws\", monitor = \"$target_monitor\" })"
 done

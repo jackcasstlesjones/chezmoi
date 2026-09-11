@@ -7,8 +7,8 @@ echo -e "NEW\n$workspaces" | fuzzel --dmenu --prompt "Move to: " | while read wo
     if [ "$workspace" = "NEW" ]; then
         # Prompt for new workspace name
         new_name=$(echo "" | fuzzel --dmenu --prompt "New workspace name: ")
-        [ -n "$new_name" ] && hyprctl dispatch movetoworkspace name:"$new_name"
+        [ -n "$new_name" ] && hyprctl dispatch "hl.dsp.window.move({ workspace = \"name:$new_name\", follow = true })"
     elif [ -n "$workspace" ]; then
-        hyprctl dispatch movetoworkspace name:"$workspace"
+        hyprctl dispatch "hl.dsp.window.move({ workspace = \"name:$workspace\", follow = true })"
     fi
 done
