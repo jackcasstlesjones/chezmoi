@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 
+# The laptop panel, matched by description so it survives eDP-N renumbering.
+INTERNAL_DESC="Lenovo Group Limited NE140WUM-N6M"
+
+# Under the Lua config manager `hyprctl keyword` is rejected
+# ("keyword can't work with non-legacy parsers. Use eval."), so monitor changes
+# go through `hyprctl eval` + hl.monitor. Position mirrors hyprland.lua.
 if [[ $1 == "open" ]]; then
-  # Always re-enable laptop screen when lid opens
-  # Disabled: Lenovo eDP-1 spec is stale, and `hyprctl keyword` is rejected by the Lua
-  # config ("keyword can't work with non-legacy parsers. Use eval."). Left unconverted.
-  # hyprctl keyword monitor "desc:Lenovo Group Limited NE140WUM-N6M,1920x1200@60,2887x0,1"
-  :
+  hyprctl eval "hl.monitor({ output = \"desc:$INTERNAL_DESC\", mode = \"preferred\", position = \"320x1440\", scale = 1 })" >/dev/null
 else
-  # Only disable laptop screen when lid closes if external monitor is connected
-  if hyprctl monitors -j | jq -e '.[] | select(.description | contains("Samsung") or contains("Dell") or contains("T24m") or contains("KTC"))' > /dev/null; then
-    # Disabled: see above.
-    # hyprctl keyword monitor "desc:Lenovo Group Limited NE140WUM-N6M,disable"
-    :
+  # Only blank the panel if some *other* monitor is still lit — `hyprctl monitors`
+  # lists enabled outputs only, so this is any-external rather than a brand list.
+  if hyprctl monitors -j | jq -e --arg d "$INTERNAL_DESC" 'any(.[]; .description != $d)' >/dev/null; then
+    hyprctl eval "hl.monitor({ output = \"desc:$INTERNAL_DESC\", disabled = true })" >/dev/null
   fi
 fi
