@@ -12,8 +12,8 @@ logs out the Steam client, which tears down DRG's peer-to-peer session.
 - kernel 7.1.6-arch1-1
 - Wi-Fi: MediaTek MT7925E (`mt7925e`), ASIC rev 79250000
 - WM firmware build 20260605184805, `linux-firmware` 20260622-1 (installed 2026-08-10)
-- NetworkManager backend: **wpa_supplicant 2:2.11-5** (iwd 3.12-1 installed but
-  `disabled` + `inactive`)
+- NetworkManager 1.58.0-1, backend **wpa_supplicant 2:2.11-5** (iwd 3.12-1
+  installed but `disabled` + `inactive`)
 - AP: TELUS1784, multi-node mesh, WPA2-PSK (`wpa-psk`, pmf default, no 802.11r)
 - Wired NIC `enp195s0f0` present, no cable (`carrier 0`)
 
@@ -72,6 +72,9 @@ Not every roam breaks — only roams onto the upper 5GHz channels. All 13
 Zero failures on channel 48 or 2.4GHz. After the 12:56 outage the card only
 recovered by falling back to 2.4GHz (`...87:8f:18`).
 
+**Escalating.** Re-counted on 2026-09-10: 43 `4WAY_HANDSHAKE_TIMEOUT` events in
+the trailing 7 days, against 13 in the window above. Roughly 3x, same config.
+
 This matches a known upstream `mt7925e` regression where the card cannot
 complete a WPA2-PSK 4-way handshake **when NetworkManager uses
 wpa_supplicant**, with iwd reported as a workaround (see References). Local
@@ -107,6 +110,37 @@ Not immune, just recoverable.
 - Steam relay / region: SteamPingLoc healthy, sea1 at 22-28ms
 - DLSS and mod.io errors in `FSD.log` — unrelated noise
 
+## The pending upgrade (assessed 2026-09-10)
+
+A 617-package upgrade is queued. It touches three of the four implicated
+layers:
+
+| Component | Installed | Queued | Bearing on this bug |
+|---|---|---|---|
+| `linux` | 7.1.6.arch1-1 | 7.2.4.arch1-2 | yes — carries `mt76` / `mt7925e` |
+| `linux-firmware-mediatek` | 20260622-1 | 20260810-2 | yes — the WM blob itself |
+| `wpa_supplicant` | 2:2.11-5 | 2:2.12-1 | yes — the SME / 4-way side |
+| `networkmanager` | 1.58.0-1 | 1.58.1-1 | no, point release |
+| `iwd` | 3.12-1 | *not in the upgrade* | fix 3 below unaffected |
+
+**Cause 1 is untouched.** Three BSSIDs at near-identical signal is a property
+of the AP and the room. No version bump changes it. The BSSID pin stays the
+only thing that stops the ping-pong.
+
+**Cause 2 might move, but the firmware bet runs backwards.** Upstream names the
+*blob* as the regression and reverting it as the fix (see References) — which
+is also fix 4 below. Going 20260622 → 20260810 rolls forward instead: it may
+carry the fix, it may not, and it adds a variable either way. The kernel bump
+is the better prospect, though the mt76 series that matches this signature
+exactly (`fix band_idx for stable 5GHz/6GHz operation`, 5GHz handshake failure
+with 2.4GHz healthy) dates to March 2026 and is likely already in 7.1.
+
+Verdict: worth taking, not worth expecting much from. Sequence it so only one
+variable moves at a time — pin the BSSID first, confirm the roams stop, then
+upgrade and reboot (neither kernel nor firmware takes effect until you do).
+Rollback is cheap: `/var/cache/pacman/pkg/` holds mediatek blobs back to
+20260221.
+
 ## Fixes, best first
 
 1. **Ethernet.** Port is there, no cable in it. Sidesteps both causes, and is
@@ -137,14 +171,18 @@ Not immune, just recoverable.
 4. **Revert the mt7925 firmware blob** if the above doesn't settle it.
 
 ## Next steps
-1. Try fix 2 or 3, then re-check `journalctl | grep 4WAY_HANDSHAKE_TIMEOUT`
-   over a play session
-2. Update or delete `docs/iwd.txt` once the backend question is settled
+1. Pin the BSSID (fix 2) *before* upgrading, so the two changes stay separable
+2. Take the upgrade, reboot, then re-count over a play session:
+   `journalctl -b | grep -c 4WAY_HANDSHAKE_TIMEOUT`
+3. If the count is no better, revert the mediatek blob from the pacman cache
+   (fix 4) before reaching for iwd (fix 3)
+4. Update or delete `docs/iwd.txt` once the backend question is settled
 
 ## References
 - https://github.com/pop-os/pop/issues/3995 (mt7925e WPA2 4-way handshake regression, iwd workaround)
 - https://discourse.nixos.org/t/unsolved-mt7921-iwd-4-way-handshake-timeout-reason-15-on-5ghz-wpa-supplicant-works-fine/77470
 - https://zbowling.github.io/mt7925/issues/known-issues/
+- https://lkml.iu.edu/hypermail/linux/kernel/2603.3/04773.html (mt76: mt7925 band_idx fix for 5GHz/6GHz)
 - https://bbs.archlinux.org/viewtopic.php?id=305588 (mt7925e Wi-Fi issues)
 - https://discuss.cachyos.org/t/networkmanager-wpa-supplicant-still-scanning-with-bssid-locked/7414
 - https://access.redhat.com/solutions/156593 (wpa_supplicant over-aggressive roaming)
