@@ -357,8 +357,8 @@ enter/leave with the `submap` dispatcher.
 
 ```lua
 hl.define_submap("resize", function()
-    hl.bind("left",  hl.dsp.window.resize({ x = -10, y = 0 }))
-    hl.bind("right", hl.dsp.window.resize({ x =  10, y = 0 }))
+    hl.bind("left",  hl.dsp.window.resize({ x = -10, y = 0, relative = true }))
+    hl.bind("right", hl.dsp.window.resize({ x =  10, y = 0, relative = true }))
     hl.bind("Escape", hl.dsp.submap("default"))
 end)
 hl.bind("SUPER + R", hl.dsp.submap("resize"))
@@ -398,7 +398,7 @@ immediately. Feed them to `hl.bind()` or `hl.dispatch()`.
 | `workspace, N` / `e+1`               | `hl.dsp.focus({ workspace = N })` / `{ workspace = "e+1" }`                        |
 | `movewindow, l/r/u/d`                | `hl.dsp.window.move({ direction = "left"/… })`                                     |
 | `moveactive, x y`                    | `hl.dsp.window.move({ x = 10, y = 0, relative = true })`                           |
-| `resizeactive, x y`                  | `hl.dsp.window.resize({ x = 10, y = 0 })`                                          |
+| `resizeactive, x y`                  | `hl.dsp.window.resize({ x = 10, y = 0, relative = true })`                                          |
 | `movewindow` (mouse)                 | `hl.dsp.window.drag()` _(with `{ mouse = true }` bind opt)_                        |
 | `resizewindow` (mouse)               | `hl.dsp.window.resize()` _(with `{ mouse = true }`)_                               |
 | `swapwindow, dir`                    | `hl.dsp.window.swap({ direction = "left" })`                                       |
@@ -437,7 +437,7 @@ immediately. Feed them to `hl.bind()` or `hl.dispatch()`.
 `pseudo` · `move({ … })` · `swap({ … })` · `center` · `cycle_next({ next, tiled, floating })` ·
 `tag({ tag })` · `clear_tags` · `toggle_swallow` · `pin({ action })` · `bring_to_top` ·
 `alter_zorder({ mode = "top"/"bottom"/"up"/"down" })` · `set_prop({ prop, value })` ·
-`deny_from_group({ action })` · `drag` · `resize({ x, y })`.
+`deny_from_group({ action })` · `drag` · `resize({ x, y, relative = true })`.
 
 **`window.move()` modes:** `{ direction = "left" }` · `{ x, y, relative = true }` ·
 `{ workspace = "3"/"special:magic", follow = true }` · `{ monitor = "+" , follow = true }` ·

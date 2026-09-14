@@ -295,10 +295,10 @@ hl.bind(hyperKey .. " + up",    hl.dsp.window.swap({ direction = "up" }))
 hl.bind(hyperKey .. " + down",  hl.dsp.window.swap({ direction = "down" }))
 
 -- Resize the active window with super + vim motions
-hl.bind(mainMod .. " + h", hl.dsp.window.resize({ x = -50, y =   0 }), { repeating = true })
-hl.bind(mainMod .. " + l", hl.dsp.window.resize({ x =  50, y =   0 }), { repeating = true })
-hl.bind(mainMod .. " + k", hl.dsp.window.resize({ x =   0, y = -50 }), { repeating = true })
-hl.bind(mainMod .. " + j", hl.dsp.window.resize({ x =   0, y =  50 }), { repeating = true })
+hl.bind(mainMod .. " + h", hl.dsp.window.resize({ x = -50, y =   0, relative = true }), { repeating = true })
+hl.bind(mainMod .. " + l", hl.dsp.window.resize({ x =  50, y =   0, relative = true }), { repeating = true })
+hl.bind(mainMod .. " + k", hl.dsp.window.resize({ x =   0, y = -50, relative = true }), { repeating = true })
+hl.bind(mainMod .. " + j", hl.dsp.window.resize({ x =   0, y =  50, relative = true }), { repeating = true })
 
 -- Move/resize windows with mainMod + LMB/RMB and dragging
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
