@@ -3,5 +3,5 @@
 Version=1.0
 Type=Application
 Name=Meet 4
-Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 4' --class='Meet 3' --app='https://meet.google.com/'"
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 4' --class='Meet 3' --new-window 'https://meet.google.com/'"
 Icon=web-browser
