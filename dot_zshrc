@@ -126,6 +126,9 @@ SAVEHIST=200000
 #   export EDITOR='nvim'
 # fi
 
+export EDITOR=nvim
+export VISUAL=nvim
+
 # Compilation flags
 # export ARCHFLAGS="-arch $(uname -m)"
 

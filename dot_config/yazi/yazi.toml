@@ -3,3 +3,13 @@ show_hidden=false
 sort_by="mtime"
 sort_reverse=true
 sort_dir_first=false
+
+[opener]
+browser = [
+	{ run = 'firefox %s', orphan = true, desc = "Firefox", for = "unix" },
+]
+
+[open]
+prepend_rules = [
+	{ url = "*.{html,htm}", use = [ "browser", "edit" ] },
+]

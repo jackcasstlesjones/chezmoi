@@ -51,6 +51,8 @@ hl.monitor({ output = "desc:LG Electronics LG TV 0x01010101",                  m
 hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
 hl.env("XCURSOR_SIZE", "24")
 hl.env("HYPRCURSOR_SIZE", "24")
+hl.env("EDITOR", "nvim")
+hl.env("VISUAL", "nvim")
 -- Fix for blurry Electron apps (Discord, Obsidian, etc.)
 hl.env("ELECTRON_OZONE_PLATFORM_HINT", "wayland")
 
