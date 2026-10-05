@@ -174,7 +174,9 @@ Run it with these changes:
 
 - Phase 6: open the PR as a DRAFT — `gh pr create --draft --base main ...`
 - Phase 6.5: SKIP. Do not request reviewers on a draft.
-- Phase 7: SKIP. Monday moves the ticket automatically off the PR now.
+- Phase 7: SKIP. The Monday sync ignores draft PRs — the ticket moves to Code Review
+  only when the PR is marked ready for review. Still end the description with the plain
+  `Closes BOZN-123` line from Phase 5, or that move never happens.
 
 If the ticket is ambiguous, under-specified, or you cannot make the fix confidently, STOP
 before Phase 3 (commit). Leave the worktree as it is and report what blocked you and what

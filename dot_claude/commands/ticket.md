@@ -53,7 +53,7 @@ Output a tight summary — no full document dumps:
 Then **start the work**:
 
 - If `task_status` is **Dev In Progress**, **Ready for Dev**, or unset → begin implementing right away
-- If status is **Review & Deploy** / **QA** / **Done** → say so and ask what they want to do (audit current state? extend? move to a different ticket?)
+- If status is **Code Review** / **QA** / **Done** → say so and ask what they want to do (audit current state? extend? move to a different ticket?)
 - If status is **Backlog** or stale → flag it before diving in
 
 ## 5. No ticket ID in the branch — list options
@@ -73,7 +73,7 @@ get_board_items_page({
 })
 ```
 
-Group by status (Dev In Progress → Ready for Dev → Review & Deploy → QA → Backlog) and ask which to pick up. Prefer finishing Dev In Progress before opening new work.
+Group by status (Dev In Progress → Ready for Dev → Code Review → QA → Backlog) and ask which to pick up. Prefer finishing Dev In Progress before opening new work.
 
 ## Reference
 

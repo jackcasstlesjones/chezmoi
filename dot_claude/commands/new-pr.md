@@ -2,7 +2,13 @@ Write a PR description as plain prose paragraphs and save it to `pr-description.
 
 Write in a conversational but precise tone. No bullet points, no lists, no markdown headings in the output. No filler like "In this PR we..." or "This PR aims to..." — just start with what changed.
 
-Open with one sentence summarizing the scope of the branch. Then write a paragraph per area of change (design system, navigation, cards, API, etc.), grouped by functionality not by file. Lead each paragraph with what changed, then explain how or why. Use backticks for file names, component names, prop names, and CSS classes. Mention hardcoded or placeholder content explicitly. If logic changed, say so. If it's purely cosmetic, say that too. Close by calling out what _didn't_ change if it's relevant (no API changes, no schema changes, etc.).
+**Length is proportional to the diff.** Size the description to the change before you write a word of it. A one-line CSS or config fix gets one or two sentences. A focused bug fix touching a file or two gets a short paragraph. Only a branch that reshapes a subsystem earns the paragraph-per-area treatment below. Roughly: under ~20 changed lines, anything beyond a short paragraph is padding; under ~100, two or three paragraphs is the ceiling.
+
+The example at the bottom is what a large branch looks like. It is not a template to fill in — do not reach for its shape on a five-line change.
+
+Padding a small diff is the same failure as describing the code, and it takes the same forms: narrating the root cause at length, listing what you verified, recording what you considered and rejected, explaining a one-token change in four sentences. All of it buries the one thing the reviewer actually needs. Verification belongs in CI and in your report to the person who asked, not in the PR body. If a small fix genuinely rests on a non-obvious cause, one sentence names it.
+
+Open with one sentence summarizing the scope of the branch. For anything larger than a focused fix, then write a paragraph per area of change (design system, navigation, cards, API, etc.), grouped by functionality not by file. Lead each paragraph with what changed, then explain how or why. Use backticks for file names, component names, prop names, and CSS classes. Mention hardcoded or placeholder content explicitly. If logic changed, say so. If it's purely cosmetic, say that too. Close by calling out what _didn't_ change if it's relevant (no API changes, no schema changes, etc.).
 
 Don't describe every file — describe functionality and patterns. Don't oversell.
 
@@ -14,7 +20,13 @@ Before writing any sentence, ask: does the reviewer need this to understand a de
 
 A sentence like "`JoinOrgButton` receives `initialStatus` from the server, tracks local state with `useState`, and calls server actions via `useAsyncAction`" is exactly wrong. A sentence like "the layout was switched to the authenticated client so the button renders with correct state on first load without a client-side fetch" is exactly right. The difference: one describes the code, one explains why a choice was made that isn't obvious from reading it.
 
-## Example output
+## Example output — a small fix (+3/−2, one file)
+
+The header was a fixed `h-14` box that also carried `md:py-4`, leaving a 24px content box for 36px children. Combined with `overflow-x-hidden`, which promotes the other axis from `visible` to `auto`, that turned the header into a scroll container and painted a scrollbar right where the avatar sits. Dropped the padding and switched to `overflow-x-clip`, matching what `globals.css` already does on `body`. Clipping alone would have hidden the 12px overflow off the search field instead of removing it.
+
+That is the whole description. No headings, no verification notes, no list of what was left alone.
+
+## Example output — a large branch
 
 This branch overhauls the visual layer of the app — typography, colors, component styling, and navigation — without changing how data flows or how features work.
 

@@ -1,6 +1,6 @@
 ---
 name: nextjs-code-review
-description: Perform thorough, structured code reviews on Next.js files and features in the Ozeaon V2 codebase. Compare the diff with the 'develop' branch, making sure to only review changes that have been made in this branch.
+description: Perform thorough, structured code reviews on Next.js files and features in the Ozeaon V2 codebase. Compare the diff with the 'main' branch, making sure to only review changes that have been made in this branch.
 compatibility:
   tools:
     - bash
@@ -10,7 +10,7 @@ compatibility:
 
 # Ozeaon V2 — Code Review Skill
 
-IMPORTANT! Git diff with 'develop' not 'main'. Check for signs of vibe coding including unnecessary fallbacks, overcomplicated data processing, non-SOLID code.
+IMPORTANT! Git diff with 'main' — there is no 'develop' or 'staging'. Check for signs of vibe coding including unnecessary fallbacks, overcomplicated data processing, non-SOLID code.
 
 Structured code review for the Ozeaon V2 platform: Next.js 16 App Router, React 19, Supabase,
 Zod 4, React Hook Form, Cloudflare R2/Workers, TypeScript strict mode.

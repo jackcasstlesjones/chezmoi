@@ -1,12 +1,12 @@
 ---
-description: Thorough, structured code review of the current branch against develop in the Ozeaon V2 codebase, with Monday ticket context resolved from the branch/PR
+description: Thorough, structured code review of the current branch against main in the Ozeaon V2 codebase, with Monday ticket context resolved from the branch/PR
 argument-hint: "[file-or-feature] (default: whole branch diff)"
 allowed-tools: Bash(git*), Bash(gh*), Bash(pnpm*), Bash(find*), Bash(cat*), Read, Grep, Glob, mcp__claude_ai_monday_com__search, mcp__claude_ai_monday_com__get_board_items_page, mcp__claude_ai_monday_com__get_board_info, mcp__claude_ai_monday_com__read_docs, mcp__claude_ai_monday_com__get_updates, mcp__claude_ai_monday_com__all_monday_api, mcp__claude_ai_Google_Drive__search_files, mcp__claude_ai_Google_Drive__read_file_content, mcp__claude_ai_Google_Drive__get_file_metadata
 ---
 
 # Ozeaon V2 — Code Review
 
-IMPORTANT! Git diff with `develop`, NOT `main`. Review ONLY changes made in this branch. Watch for vibe-coding signs: unnecessary fallbacks, overcomplicated data processing, non-SOLID code.
+IMPORTANT! Git diff with `main` — there is no `develop` or `staging`. Review ONLY changes made in this branch. Watch for vibe-coding signs: unnecessary fallbacks, overcomplicated data processing, non-SOLID code.
 
 Structured code review for the Ozeaon V2 platform: Next.js 16 App Router, React 19, Supabase,
 Zod 4, React Hook Form, Cloudflare R2/Workers, TypeScript strict mode.

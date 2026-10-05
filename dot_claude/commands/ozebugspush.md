@@ -1,5 +1,5 @@
 ---
-description: Full bug-fix push pipeline — pull ticket, implement fix, commit, review, PR, move Monday ticket
+description: Full bug-fix push pipeline — pull ticket, implement fix, commit, review, PR into main, confirm Monday sync
 ---
 
 # Ozeaon Bug Push Pipeline
@@ -30,7 +30,7 @@ Invoke `/commit` to stage and commit all changes in atomic conventional commits.
 
 ## Phase 4 — Code review
 
-Invoke `/oz-review` to review the full diff against `develop`. Work through every finding:
+Invoke `/oz-review` to review the full diff against `main`. Work through every finding:
 
 - 🔴 Critical — fix immediately, then re-commit before continuing
 - 🟡 Warning — fix and re-commit if the fix is unambiguous; otherwise flag it in the PR description
@@ -44,14 +44,16 @@ If any fixes were made in this phase, invoke `/commit` again to commit them befo
 
 Invoke `/new-pr` to generate the PR description and save it to `pr-description.md`.
 
+End the description with a plain `Closes BOZN-<n>` line — not in backticks or a code block. That line is the only thing that links the PR to its Monday item; an id in the branch name or a commit message is ignored.
+
 ## Phase 6 — Create the PR
 
-Use `gh pr create` with the content from `pr-description.md` as the body. Target `develop`.
+Use `gh pr create` with the content from `pr-description.md` as the body. Target `main` — there is no `develop` or `staging`. Every PR into `main` gets its own preview Worker and Supabase branch (`docs/deployment-previews.md`).
 
 **PR title**: `fix(<scope>): <what changed>` — conventional commit style, under 70 chars.
 
 ```bash
-gh pr create --title "..." --base develop --body "$(cat pr-description.md)"
+gh pr create --title "..." --base main --body-file pr-description.md
 ```
 
 Print the PR URL once created.
@@ -70,18 +72,20 @@ Confirm both reviewers were added.
 
 ---
 
-## Phase 7 — Move the Monday ticket
+## Phase 7 — Confirm the Monday sync
 
-Load `mcp__claude_ai_monday_com__change_item_column_values` via ToolSearch, then move the BOZN item (board `5015597434`) from its current phase to **Review & Deploy**:
+Do not move the ticket by hand. `.github/workflows/monday-sync.yml` moves the BOZN item to **Code Review** when the PR opens and writes the PR URL into its GitHub Link field, then on to **QA** on approval and **Fixed** on merge (`docs/workflows.md` § Monday tickets).
 
-```json
-{ "bug_status": { "label": "Review & Deploy" } }
+Check the PR for the sync job's comment naming the ticket and the column it landed in:
+
+```bash
+gh pr view --comments
 ```
 
-Confirm the update was successful and print the Monday item URL.
+If no comment appears, or the **Ticket ID** check fails, the `Closes BOZN-<n>` line is missing or malformed — fix the PR description rather than moving the ticket manually.
 
 ---
 
 ## Done
 
-Report in one sentence: commits made, PR URL, and that the ticket was moved to Review & Deploy.
+Report in one sentence: commits made, PR URL, and the column the sync moved the ticket to.
