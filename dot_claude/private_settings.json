@@ -1,6 +1,5 @@
 {
-  "model": "opus[1m]",
-  "theme": "dark",
+  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
       "Read",
@@ -56,7 +55,7 @@
       "Bash(journalctl:*)"
     ]
   },
-  "includeCoAuthoredBy": false,
+  "model": "opus",
   "worktree": {
     "baseRef": "head"
   },
@@ -64,16 +63,12 @@
     "type": "command",
     "command": "/home/jack/.claude/statusline-command.sh"
   },
-  "env": {
-    "ANTHROPIC_BASE_URL": "",
-    "ANTHROPIC_AUTH_TOKEN": "",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001"
-  },
   "enabledPlugins": {
     "claude-mem@thedotmack": true,
     "discord@claude-plugins-official": true,
-    "i-have-adhd@i-have-adhd": true
+    "i-have-adhd@i-have-adhd": true,
+    "netlify-skills@claude-plugins-official": true,
+    "vercel@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "i-have-adhd": {
@@ -126,5 +121,39 @@
       "supabase"
     ]
   },
-  "agentPushNotifEnabled": true
+  "theme": "dark",
+  "agentPushNotifEnabled": true,
+  "autoMode": {
+    "soft_deny": [
+      "$defaults",
+      "Bash(supabase db reset:*) in ozeaon-v2 — destructive local DB reset, routine in dev but worth a confirm",
+      "Bash(wrangler deploy:*) / pnpm ci:deploy without --env flag in ozeaon-v2 — ambiguous target per CLAUDE.md warning about WORKER_SELF_REFERENCE breaking"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: Cloudflare (Workers, R2) and Supabase (Postgres/Auth/Realtime), used by this project (ozeaon/ozeaon-v2)",
+      "**Repository visibility**: Private — repo `ozeaon/ozeaon-v2` (confirmed via gh)",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured beyond CI secret names referenced in workflows (e.g. CLOUDFLARE_API_TOKEN, SUPABASE_ACCESS_TOKEN, RESEND_API_KEY, MAILCHIMP_API_KEY, OPENAI_API_KEY, MONDAY_API_TOKEN, DISCORD_WEBHOOK_URL, GITHUB_TOKEN, ACCESS_TOKEN, BACKMERGE_TOKEN, PREVIEW_* variants) — values never gathered, names only",
+      "**Default / protected branches**: `develop`, `main`, `staging` protected; ruleset `Working Branches Protection` active (via gh, authoritative)",
+      "**CI/CD deploy targets**: Cloudflare Workers via OpenNext + Wrangler (`pnpm ci:build` / `pnpm ci:deploy --env staging|production`); GitHub Actions workflows `staging.yml` (branch `staging`) and `production.yml` (branch `main`)",
+      "**Network posture**: None configured",
+      "**Host containment**: None configured — assume Claude Code runs on an ordinary developer machine with open internet",
+      "**Source control**: The trusted repo (ozeaon/ozeaon-v2) and its remote (github.com:ozeaon/ozeaon-v2.git) only — no additional orgs configured",
+      "**Trusted internal domains**: ozeaon.com, app.ozeaon.com, app.ozeaon.dev (per README live links for this project)",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: Supabase project backing this repo; Cloudflare R2 bucket bound as `R2_BUCKET` in `wrangler.jsonc` for this project",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: `.env.local`, `.env.production`, `.env.staging`, `.envrc`, `.env.sentry-build-plugin` (gitignored, local/CI only); `supabase/migrations/20261006000000_notifications_retention.sql` (data retention logic); CI secret names listed above — share only with audiences cleared at the [named+specifics] bar",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment — includes this project's `production` Cloudflare Workers env and `.env.production`/`PREVIEW_*` split in CI",
+      "**Protected deployment namespaces / environments**: `production` and `staging` Cloudflare Worker environments for this project (per `--env production` / `--env staging` deploy convention); `main`, `staging`, `develop` branches",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment — includes this project's Cloudflare `wrangler.jsonc` production/staging env blocks",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (Next.js/Supabase/Cloudflare full-stack work on OZEAON V2)",
+      "**Trusted repo**: ozeaon/ozeaon-v2 (this repo's working directory, a worktree at tozn-474) and its configured remote github.com:ozeaon/ozeaon-v2.git — private, so confidential material is fine here but secrets/personal data are never cleared by visibility",
+      "**Org-specific CLIs**: None configured"
+    ]
+  }
 }

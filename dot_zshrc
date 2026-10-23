@@ -144,6 +144,9 @@ export VISUAL=nvim
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
+# Claude Code via Z.ai GLM models, layered over the normal settings
+alias glm='claude --settings ~/.claude/settings.glm.json'
+
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
