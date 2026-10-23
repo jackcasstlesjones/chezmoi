@@ -40,6 +40,7 @@
 #power-profiles-daemon,
 #keyboard-state,
 #custom-camera-power,
+#custom-claude-usage,
 #mpd {{
   background-color: @color0;
   color: @foreground;

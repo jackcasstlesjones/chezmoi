@@ -1,0 +1,8 @@
+{
+  "custom/claude-usage": {
+    "exec": "~/.config/waybar/scripts/claude-usage.sh",
+    "format": "󰚩 {}",
+    "return-type": "json",
+    "interval": 120
+  }
+}

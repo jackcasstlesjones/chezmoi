@@ -171,7 +171,8 @@ button:hover {
 #keyboard-state,
 #mpd,
 #custom-camera-power,
-#custom-supabase {
+#custom-supabase,
+#custom-claude-usage {
   /* background-color: #4c566a; */
   padding: 0 10px;
   /* color: #eceff4; */
@@ -523,4 +524,19 @@ label:focus {
 #custom-supabase.stopped {
   color: #4c566a;
   /* Nord3 - dim when stopped */
+}
+
+#custom-claude-usage.warning {
+  color: #ebcb8b;
+  /* Nord13 - yellow at 70%+ */
+}
+
+#custom-claude-usage.critical {
+  color: #bf616a;
+  /* Nord11 - red at 90%+ */
+}
+
+#custom-claude-usage.error {
+  color: #4c566a;
+  /* Nord3 - dim when unavailable */
 }
