@@ -147,6 +147,9 @@ export VISUAL=nvim
 # Claude Code via Z.ai GLM models, layered over the normal settings
 alias glm='claude --settings ~/.claude/settings.glm.json'
 
+# Check camera USB autosuspend is disabled
+alias camcheck='~/.config/scripts/camcheck.sh'
+
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
