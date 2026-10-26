@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Run a command as root via jackadmin, since jack isn't in sudoers.
+#
+#   admin pacman -Syu
+#
+# --pty gives sudo a terminal to prompt on; su -c otherwise detaches it.
+# Also serves as yay's sudo command: yay --sudo admin --save
+
+exec su --pty - jackadmin -c "sudo $(printf '%q ' "$@")"
