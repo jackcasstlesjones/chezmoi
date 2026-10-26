@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Notion
+Comment=Open Notion page in firefox
+Exec=firefox https://app.notion.com/p/5f3a1916083949cdac7e747e2fe4ce6e
+Icon=web-browser
+Type=Application
+Categories=Office;
+Keywords=notion;notes;docs;
