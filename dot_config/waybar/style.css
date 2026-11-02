@@ -85,10 +85,13 @@ button:hover {
 }
 */
 
-/* Nord Theme */
 #workspaces button:hover {
-  background: #3b4252;
-  /* Nord1 - Polar Night */
+  background: @color8;
+}
+
+/* Keep the active workspace highlighted while hovered */
+#workspaces button.active:hover {
+  background: @color12;
 }
 
 /* Original - commented out
