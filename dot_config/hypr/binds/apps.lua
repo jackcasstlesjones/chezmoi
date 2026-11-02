@@ -14,7 +14,7 @@ hl.bind(mainMod  .. " + R",     hl.dsp.exec_cmd("~/.config/scripts/toggle-samsun
 hl.bind(mainMod  .. " + SHIFT + L", hl.dsp.exec_cmd("hyprlock"))
 hl.bind(hyperKey .. " + Y",     hl.dsp.exec_cmd("kitty --class yazi-float -e yazi"))
 hl.bind(hyperKey .. " + O",     hl.dsp.exec_cmd("~/.config/scripts/fuzzel-find-dir.sh"))
-hl.bind(hyperKey .. " + N",     hl.dsp.exec_cmd("~/.config/hypr/scripts/scratchpad.sh"))
+hl.bind(hyperKey .. " + N",     hl.dsp.exec_cmd("~/.config/scripts/scratchpad.sh"))
 hl.bind(hyperKey .. " + space", hl.dsp.exec_cmd([[hyprctl clients -j | jq -e '.[] | select(.class == "calculator")' > /dev/null || kitty --class calculator -e ~/.local/bin/calc-memory]]))
 
 -- Clipboard history

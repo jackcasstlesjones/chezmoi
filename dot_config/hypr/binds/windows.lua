@@ -5,7 +5,7 @@ hl.bind(mainMod .. " + Q", hl.dsp.window.close())
 hl.bind(mainMod .. " + Z", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + T", hl.dsp.layout("togglesplit"))  -- dwindle
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
-hl.bind(mainMod .. " + SHIFT + O", hl.dsp.exec_cmd("~/.config/hypr/scripts/move-to-workspace.sh"))
+hl.bind(mainMod .. " + SHIFT + O", hl.dsp.exec_cmd("~/.config/scripts/move-to-workspace.sh"))
 
 hl.bind(hyperKey .. " + Return", hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }))
 hl.bind(hyperKey .. " + A",      hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }))

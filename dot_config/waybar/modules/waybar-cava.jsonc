@@ -1,6 +1,6 @@
 {
     "custom/cava": {
-        "exec": "~/.config/hypr/scripts/waybarCava.sh",
+        "exec": "~/.config/scripts/waybar-cava.sh",
         "format": "{}",
         "on-click": "kitty -c ~/.config/dotfiles/kitty/kitty.conf nvim -c cd ~/.config/dotfiles/"
     }
