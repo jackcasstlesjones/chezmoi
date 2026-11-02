@@ -1,0 +1,11 @@
+/* Semantic aliases over pywal's palette (defined in the import above). */
+@define-color fg        @foreground;
+@define-color bg        @background;
+@define-color surface   @color0;   /* module pill background */
+@define-color subtle    @color8;   /* hover, dimmed states */
+@define-color accent    @color4;   /* active workspace, clock border */
+@define-color accent-hi @color12;  /* active workspace hover */
+@define-color highlight @color11;  /* media border */
+@define-color ok        @color2;
+@define-color warn      @color3;
+@define-color urgent    @color1;

@@ -1,0 +1,32 @@
+#workspaces {
+  background-color: @surface;
+  border: 2px solid @accent;
+  border-radius: 4px;
+  padding: 2px;
+  margin: 0 4px;
+}
+
+#workspaces button {
+  color: @fg;
+  background-color: transparent;
+  border-radius: 4px;
+  padding: 0 5px;
+  margin: 2px;
+}
+
+#workspaces button:hover {
+  background: @subtle;
+}
+
+#workspaces button.active {
+  background-color: @accent;
+}
+
+/* Keep the active workspace highlighted while hovered */
+#workspaces button.active:hover {
+  background: @accent-hi;
+}
+
+#workspaces button.urgent {
+  background-color: @urgent;
+}

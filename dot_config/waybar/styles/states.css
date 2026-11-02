@@ -1,0 +1,45 @@
+/* Module state classes */
+
+#battery.charging,
+#battery.plugged {
+  background-color: @ok;
+  color: @bg;
+}
+
+#battery.critical:not(.charging),
+#network.disconnected,
+#temperature.critical {
+  background-color: @urgent;
+}
+
+#pulseaudio.muted {
+  background-color: @subtle;
+}
+
+#power-profiles-daemon.performance { background-color: @urgent; color: @bg; }
+#power-profiles-daemon.balanced    { background-color: @accent; color: @bg; }
+#power-profiles-daemon.power-saver { background-color: @ok;     color: @bg; }
+
+#idle_inhibitor.activated {
+  background-color: @fg;
+  color: @bg;
+}
+
+#tray > .passive {
+  -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+  -gtk-icon-effect: highlight;
+  background-color: @urgent;
+}
+
+/* Custom script modules: text colour reflects status */
+#custom-supabase.running,
+#custom-camera-power.good   { color: @ok; }
+#custom-camera-power.warning,
+#custom-claude-usage.warning { color: @warn; }
+#custom-camera-power.critical,
+#custom-claude-usage.critical { color: @urgent; }
+#custom-supabase.stopped,
+#custom-claude-usage.error  { color: @subtle; }

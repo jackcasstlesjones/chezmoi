@@ -1,0 +1,39 @@
+/* Shared "pill" look for every module */
+#custom-clock,
+#custom-media,
+#pulseaudio,
+#bluetooth,
+#network,
+#power-profiles-daemon,
+#cpu,
+#memory,
+#temperature,
+#battery,
+#custom-supabase,
+#custom-claude-usage,
+#tray,
+#idle_inhibitor,
+#keyboard-state,
+#custom-camera-power {
+  background-color: @surface;
+  color: @fg;
+  border: 2px solid @fg;
+  border-radius: 4px;
+  padding: 0 10px;
+  margin: 0 2px;
+  letter-spacing: 1.6px;
+}
+
+#custom-clock {
+  border-color: @accent;
+  letter-spacing: 2px;
+}
+
+#custom-media {
+  border-color: @highlight;
+  min-width: 100px;
+}
+
+#power-profiles-daemon {
+  padding-right: 15px;
+}
