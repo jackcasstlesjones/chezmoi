@@ -22,7 +22,7 @@ CHOICE=$(echo "$OPTIONS" | fuzzel --dmenu --hide-prompt --lines 9)
 
 case "$CHOICE" in
     "🎨 Themes")
-        ~/.config/waybar/scripts/theme-sed-toggle.sh
+        ~/.config/waybar/scripts/wallpaper-theme.sh
         ;;
     "🔒 Lock")
         hyprlock

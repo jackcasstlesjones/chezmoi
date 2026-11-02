@@ -2,6 +2,6 @@
     "custom/theme-toggle": {
         "format": "🟠",
         "tooltip-format": "Change wallpaper & theme",
-        "on-click": "~/.config/waybar/scripts/theme-sed-toggle.sh"
+        "on-click": "~/.config/waybar/scripts/wallpaper-theme.sh"
     }
 }
