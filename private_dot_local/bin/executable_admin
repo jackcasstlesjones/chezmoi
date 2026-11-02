@@ -5,6 +5,8 @@
 #   admin pacman -Syu
 #
 # --pty gives sudo a terminal to prompt on; su -c otherwise detaches it.
+# The login shell (su -) resets cwd to jackadmin's home, and jackadmin can't
+# enter /home/jack, so the cd happens inside sudo (as root) instead.
 # Also serves as yay's sudo command: yay --sudo admin --save
 
-exec su --pty - jackadmin -c "sudo $(printf '%q ' "$@")"
+exec su --pty - jackadmin -c "sudo sh -c 'cd \"\$0\" && exec \"\$@\"' $(printf '%q ' "$PWD" "$@")"
