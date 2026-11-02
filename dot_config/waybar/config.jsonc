@@ -1,44 +1,50 @@
 // -*- mode: jsonc -*-
+// Bar layout only. Each module's settings live in modules/<name>.jsonc;
+// styling lives in style.css (+ styles/).
 {
     "include": [
-        "~/.config/waybar/modules/workspaces.jsonc",
+        // left
         "~/.config/waybar/modules/clock.jsonc",
         "~/.config/waybar/modules/hostname.jsonc",
-        "~/.config/waybar/modules/idle-inhibitor.jsonc",
-        "~/.config/waybar/modules/keyboard.jsonc",
-        "~/.config/waybar/modules/network.jsonc",
-        "~/.config/waybar/modules/cpu-mem-temp.jsonc",
+        "~/.config/waybar/modules/media.jsonc",
+        // "~/.config/waybar/modules/waybar-cava.jsonc",
+        // center
+        "~/.config/waybar/modules/workspaces.jsonc",
+        // right
         "~/.config/waybar/modules/audio.jsonc",
         "~/.config/waybar/modules/bluetooth.jsonc",
-        // "~/.config/waybar/modules/camera-power.jsonc",
+        "~/.config/waybar/modules/network.jsonc",
+        "~/.config/waybar/modules/power-profiles.jsonc",
+        "~/.config/waybar/modules/cpu-mem-temp.jsonc",
+        "~/.config/waybar/modules/battery.jsonc",
         "~/.config/waybar/modules/supabase.jsonc",
-        "~/.config/waybar/modules/claude-usage.jsonc"
-        // "~/.config/waybar/modules/waybar-cava.jsonc"
+        "~/.config/waybar/modules/claude-usage.jsonc",
+        "~/.config/waybar/modules/tray.jsonc",
+        "~/.config/waybar/modules/theme-toggle.jsonc"
+        // disabled
+        // "~/.config/waybar/modules/idle-inhibitor.jsonc",
+        // "~/.config/waybar/modules/keyboard.jsonc",
+        // "~/.config/waybar/modules/camera-power.jsonc",
+        // "~/.config/waybar/modules/power.jsonc"
     ],
-    // "layer": "top", // Waybar at top layer
-    // "position": "bottom", // Waybar position (top|bottom|left|right)
-    "height": 35, // Waybar height (to be removed for auto height)
-    // "width": 1280, // Waybar width
-    "spacing": 12, // Gaps between modules (12px)
+
+    "height": 35,
+    "spacing": 12,
     "margin-top": 20,
     "margin-bottom": 0,
     "margin-left": 20,
     "margin-right": 20,
-    // Choose the order of the modules
+
     "modules-left": [
-        // "hyprland/workspaces",
         "custom/clock",
         "custom/hostname",
-        "custom/media",
-        "custom/cava"
+        "custom/media"
+        // "custom/cava"
     ],
     "modules-center": [
-        "hyprland/workspaces",
-        "sway/window"
+        "hyprland/workspaces"
     ],
     "modules-right": [
-        "mpd",
-        // "idle_inhibitor",
         "pulseaudio",
         "bluetooth",
         "network",
@@ -46,114 +52,14 @@
         "cpu",
         "memory",
         "temperature",
-        // "backlight",
-        // "keyboard-state",
-        "sway/language",
         "battery",
         "custom/supabase",
         "custom/claude-usage",
-        // "custom/camera-power",
-        // "battery#bat2",
         "tray",
         "custom/theme-toggle"
+        // "idle_inhibitor",
+        // "keyboard-state",
+        // "custom/camera-power",
         // "custom/power"
-    ],
-    "mpd": {
-        "format": "{stateIcon} {consumeIcon}{randomIcon}{repeatIcon}{singleIcon}{artist} - {album} - {title} ({elapsedTime:%M:%S}/{totalTime:%M:%S}) ⸨{songPosition}|{queueLength}⸩ {volume}% ",
-        "format-disconnected": "Disconnected ",
-        "format-stopped": "{consumeIcon}{randomIcon}{repeatIcon}{singleIcon}Stopped ",
-        "unknown-tag": "N/A",
-        "interval": 5,
-        "consume-icons": {
-            "on": " "
-        },
-        "random-icons": {
-            "off": "<span color=\"#f53c3c\"></span> ",
-            "on": " "
-        },
-        "repeat-icons": {
-            "on": " "
-        },
-        "single-icons": {
-            "on": "1 "
-        },
-        "state-icons": {
-            "paused": "",
-            "playing": ""
-        },
-        "tooltip-format": "MPD (connected)",
-        "tooltip-format-disconnected": "MPD (disconnected)"
-    },
-    "tray": {
-        // "icon-size": 21,
-        "spacing": 10,
-        // "icons": {
-        "blueman": "bluetooth",
-        //   "TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png"
-        // }
-    },
-    // "backlight": {
-    //     // "device": "acpi_video1",
-    //     "format": "{percent}% ",
-    // },
-    "battery": {
-        "states": {
-            // "good": 95,
-            "warning": 30,
-            "critical": 15
-        },
-        "format": "{capacity}% {icon}",
-        "format-full": "{capacity}% {icon}",
-        "format-charging": "{capacity}% ",
-        "format-plugged": "{capacity}% ",
-        "format-alt": "{time} {icon}",
-        // "format-good": "", // An empty format will hide the module
-        // "format-full": "",
-        "format-icons": [
-            "",
-            "",
-            "",
-            "",
-            ""
-        ],
-        "on-update": "$HOME/.config/scripts/battery-notify.sh"
-    },
-    "battery#bat2": {
-        "bat": "BAT2"
-    },
-    "power-profiles-daemon": {
-        "format": "{icon}",
-        "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
-        "tooltip": true,
-        "format-icons": {
-            "default": "",
-            "performance": "",
-            "balanced": "",
-            "power-saver": ""
-        }
-    },
-    "custom/media": {
-        "format": "{icon} {text}",
-        "return-type": "json",
-        "max-length": 40,
-        "format-icons": {
-            "spotify": "",
-            "default": "🎜"
-        },
-        "escape": true,
-        "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null" // Script in resources folder
-        // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
-    },
-    "custom/power": {
-        "format": "⏻ ",
-        "tooltip": false,
-        "menu": "on-click",
-        "menu-file": "$HOME/.config/waybar/power_menu.xml", // Menu file in resources folder
-        "menu-actions": {
-            "shutdown": "shutdown now",
-            "reboot": "reboot",
-            "suspend": "systemctl suspend",
-            "hibernate": "systemctl hibernate"
-        }
-    }
+    ]
 }
