@@ -79,7 +79,7 @@
     }
   },
   "sandbox": {
-    "enabled": true,
+    "enabled": false,
     "autoAllowBashIfSandboxed": true,
     "network": {
       "allowedDomains": [
@@ -107,8 +107,11 @@
         "~/.local/state",
         "~/tandemhub",
         "~/coding",
-        "~/.local/share/pnpm"
-      ]
+        "~/.local/share/pnpm",
+        "/run/user/1000/pnpm-store-operation-locks-1000",
+        "/run/user/1000/pnpm-dir-locks-1000"
+      ],
+      "allowGitConfig": true
     },
     "excludedCommands": [
       "sudo",
