@@ -4,8 +4,6 @@
 WALLPAPERS=("city2.png" "fallout.jpg" "anime.png" "hollow-sat.jpg" "hollow-yellow.png" "herakles.png" "frosted-dark.png" "nord-mountain.png" "hollowknight-cartoon.jpg" "zach-mountain.jpg" "swirl.jpg" "flower-dark.jpg")
 
 # Config files
-STYLE_FILE="$HOME/.config/waybar/style.css"
-STATE_FILE="$HOME/.config/waybar/.theme-state"
 HYPRPAPER_FILE="$HOME/.config/hypr/hyprpaper.conf"
 
 # Use fuzzel to select wallpaper
@@ -22,9 +20,6 @@ for i in "${!WALLPAPERS[@]}"; do
         break
     fi
 done
-# Apply waybar theme (use pywal-generated colors)
-sed -i "s|@import url(\"./.*\\.css\");|@import url(\"$HOME/.cache/wal/colors-waybar.css\");|g" "$STYLE_FILE"
-
 # Update hyprpaper config
 sed -i "s|~/.config/wallpapers/.*|~/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]}|g" "$HYPRPAPER_FILE"
 
@@ -41,9 +36,6 @@ elif [[ "${WALLPAPERS[$NEXT_INDEX]}" == flower* ]]; then
 else
     wal -i "$HOME/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]}" -n -q
 fi
-
-# Save new index
-echo "$NEXT_INDEX" > "$STATE_FILE"
 
 # Reload
 WALLPAPER_PATH="$HOME/.config/wallpapers/${WALLPAPERS[$NEXT_INDEX]}"
