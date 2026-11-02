@@ -38,3 +38,4 @@ fi
 hyprctl hyprpaper preload "$WALLPAPER_PATH"
 hyprctl hyprpaper wallpaper ",$WALLPAPER_PATH"
 pkill -SIGUSR2 waybar
+hyprctl reload  # re-read pywal colours for window borders
