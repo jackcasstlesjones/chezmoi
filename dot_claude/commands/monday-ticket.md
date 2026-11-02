@@ -77,14 +77,14 @@ Group by status (Dev In Progress → Ready for Dev → Code Review → QA → Ba
 
 ## Reference
 
-| Field | Value |
-|---|---|
-| Board ID | `5015597431` |
-| Workspace | OZEAON Dev |
-| Task prefix | `TOZN` |
+| Field                 | Value                                        |
+| --------------------- | -------------------------------------------- |
+| Board ID              | `5015597431`                                 |
+| Workspace             | OZEAON Dev                                   |
+| Task prefix           | `TOZN`                                       |
 | Jack's Monday user ID | `90359998` (filter format `person-90359998`) |
-| Owner column | `task_owner` |
-| Assignee column | `multiple_person_mkwz2e5d` |
-| Status column | `task_status` (Done = label id `1`) |
-| Type column | `color_mkynjgea` |
-| Item ID column | `item_id` |
+| Owner column          | `task_owner`                                 |
+| Assignee column       | `multiple_person_mkwz2e5d`                   |
+| Status column         | `task_status` (Done = label id `1`)          |
+| Type column           | `color_mkynjgea`                             |
+| Item ID column        | `item_id`                                    |
