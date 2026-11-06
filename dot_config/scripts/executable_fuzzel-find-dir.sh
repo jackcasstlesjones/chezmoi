@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-HIST="${XDG_CACHE_HOME:-$HOME/.cache}/fuzzel-find-dir/history"
-mkdir -p "$(dirname "$HIST")"
-touch "$HIST"
+# fuzzel ranks entries you pick often higher using this cache
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/fuzzel-find-dir/cache"
+mkdir -p "$(dirname "$CACHE")"
 
 cd "$HOME"
 
-all=$(fd --type d --max-depth 5 --no-ignore-vcs \
+all=$(fd --type d --type f --max-depth 5 \
 	--exclude node_modules \
 	--exclude target \
 	--exclude __pycache__ \
+	--exclude /miniconda3 \
+	--exclude /go \
+	--exclude /nltk_data \
+	--exclude '/Calibre Library' \
 	.)
 
-recent=$(grep -Fxf <(printf '%s\n' "$all") "$HIST" || true)
-
-selected=$(printf '%s\n%s\n' "$recent" "$all" \
-	| awk 'NF && !seen[$0]++' \
-	| fuzzel --dmenu)
+selected=$(fuzzel --dmenu --width=140 --match-mode=exact --cache="$CACHE" <<<"$all")
 
 [ -z "$selected" ] && exit 0
 
-{ printf '%s\n' "$selected"; cat "$HIST"; } \
-	| awk 'NF && !seen[$0]++' \
-	| head -n 200 > "$HIST.tmp"
-mv "$HIST.tmp" "$HIST"
-
-thunar "$HOME/$selected" &
+# Folders go to Thunar directly: xdg-open sends them to kitty on this machine
+if [ -d "$HOME/$selected" ]; then
+	thunar "$HOME/$selected" &
+else
+	xdg-open "$HOME/$selected" &
+fi
