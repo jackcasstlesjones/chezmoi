@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Laozi
+Comment=Open Laozi in firefox
+Exec=firefox https://laoziloss.vercel.app/
+Icon=web-browser
+Type=Application
+Categories=Network;
+Keywords=laozi;
