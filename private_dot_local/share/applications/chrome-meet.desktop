@@ -2,6 +2,6 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Meet 1
-Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 1' --class='Meet 1' --app='https://meet.google.com/'"
+Name=Meet
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 4' --class='Meet' --new-window 'https://meet.google.com/'"
 Icon=web-browser
