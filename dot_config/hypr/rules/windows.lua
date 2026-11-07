@@ -65,6 +65,14 @@ hl.window_rule({
 })
 
 hl.window_rule({
+    name  = "wallpaper-picker-float",
+    match = { class = "^(wallpaper-picker)$" },
+    float  = true,
+    size   = "1400 800",
+    center = true,
+})
+
+hl.window_rule({
     name  = "yazi-float",
     match = { class = "^(yazi-float)$" },
     float   = true,
