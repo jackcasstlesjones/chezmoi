@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Theme Picker
+Comment=Choose a wallpaper and recolour the desktop with pywal
+Exec=/home/jack/.config/waybar/scripts/wallpaper-theme.sh
+Icon=preferences-desktop-theme
+Type=Application
+Terminal=false
+Categories=Settings;
+Keywords=theme;wallpaper;pywal;colours;colors;
