@@ -43,4 +43,9 @@ hl.bind("ALT + k", hl.dsp.send_shortcut({ mods = "", key = "Up" }),    { repeati
 hl.bind("ALT + l", hl.dsp.send_shortcut({ mods = "", key = "Right" }), { repeating = true })
 
 -- Disable Ctrl+T in Chrome windows
-hl.bind("CTRL + T", hl.dsp.exec_cmd([[hyprctl activewindow -j | jq -e '.class | contains("chrome")' > /dev/null || wtype -M ctrl -k t]]))
+-- send_shortcut goes straight to the window, so it isn't swallowed by this bind.
+hl.bind("CTRL + T", function()
+    local w = hl.get_active_window()
+    if w and w.class:find("chrome", 1, true) then return end
+    hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL", key = "t" }))
+end)
