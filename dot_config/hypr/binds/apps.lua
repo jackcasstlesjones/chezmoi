@@ -36,10 +36,11 @@ hl.bind(mainMod .. " + U",         hl.dsp.exec_cmd("pkill hyprsunset || hyprsuns
 hl.bind(mainMod .. " + SHIFT + U", hl.dsp.exec_cmd("hyprsunset -t 2000"))
 
 -- Alt + hjkl as arrow keys
-hl.bind("ALT + h", hl.dsp.exec_cmd("wtype -k Left"))
-hl.bind("ALT + j", hl.dsp.exec_cmd("wtype -k Down"))
-hl.bind("ALT + k", hl.dsp.exec_cmd("wtype -k Up"))
-hl.bind("ALT + l", hl.dsp.exec_cmd("wtype -k Right"))
+-- send_shortcut, not wtype: since 0.57, wtype keys pick up the held Alt.
+hl.bind("ALT + h", hl.dsp.send_shortcut({ mods = "", key = "Left" }),  { repeating = true })
+hl.bind("ALT + j", hl.dsp.send_shortcut({ mods = "", key = "Down" }),  { repeating = true })
+hl.bind("ALT + k", hl.dsp.send_shortcut({ mods = "", key = "Up" }),    { repeating = true })
+hl.bind("ALT + l", hl.dsp.send_shortcut({ mods = "", key = "Right" }), { repeating = true })
 
 -- Disable Ctrl+T in Chrome windows
 hl.bind("CTRL + T", hl.dsp.exec_cmd([[hyprctl activewindow -j | jq -e '.class | contains("chrome")' > /dev/null || wtype -M ctrl -k t]]))
