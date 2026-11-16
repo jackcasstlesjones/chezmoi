@@ -1,0 +1,10 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=MailCal
+Comment=Open Tandem mail and calendar
+Exec=sh -c "gtk-launch chrome-mail; sleep 0.15; gtk-launch chrome-calendar"
+Icon=web-browser
+Terminal=false
+Keywords=email;calendar;tandem;

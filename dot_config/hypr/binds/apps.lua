@@ -8,17 +8,17 @@ hl.bind(mainMod  .. " + W",     hl.dsp.exec_cmd("wlogout"))
 hl.bind(mainMod  .. " + space", hl.dsp.exec_cmd("fuzzel --hide-prompt -I"))
 hl.bind(mainMod  .. " + P",     hl.dsp.exec_cmd("hyprpicker -a"))
 hl.bind(mainMod  .. " + Y",     hl.dsp.exec_cmd("wofi-calc"))
-hl.bind(mainMod  .. " + C",     hl.dsp.exec_cmd("/home/jack/.config/waybar/scripts/wallpaper-theme.sh"))
+hl.bind(mainMod  .. " + C",     hl.dsp.exec_cmd("~/.config/scripts/copy-latest-download.sh"))
 hl.bind(mainMod  .. " + B",     hl.dsp.exec_cmd("kitty --class=bluetui -o remember_window_size=no -o initial_window_width=600 -o initial_window_height=500 bluetui"))
 hl.bind(mainMod  .. " + R",     hl.dsp.exec_cmd("~/.config/scripts/toggle-samsung-res.sh"))
 hl.bind(mainMod  .. " + SHIFT + L", hl.dsp.exec_cmd("hyprlock"))
-hl.bind(hyperKey .. " + Y",     hl.dsp.exec_cmd("kitty --class yazi-float -e yazi"))
+hl.bind(hyperKey .. " + Y",     hl.dsp.exec_cmd("~/.config/scripts/yazi-cwd.sh"))
 hl.bind(hyperKey .. " + O",     hl.dsp.exec_cmd("~/.config/scripts/fuzzel-find-dir.sh"))
 hl.bind(hyperKey .. " + N",     hl.dsp.exec_cmd("~/.config/scripts/scratchpad.sh"))
 hl.bind(hyperKey .. " + space", hl.dsp.exec_cmd([[hyprctl clients -j | jq -e '.[] | select(.class == "calculator")' > /dev/null || kitty --class calculator -e ~/.local/bin/calc-memory]]))
 
 -- Clipboard history
-hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("cliphist list | fuzzel --hide-prompt --dmenu --with-nth 2 | cliphist decode | wl-copy"))
+hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("~/.config/scripts/clipboard-history.sh"))
 
 -- Screenshots
 hl.bind(hyperKey .. " + 3", hl.dsp.exec_cmd("hyprshot -m region --freeze --clipboard-only"))

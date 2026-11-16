@@ -73,6 +73,14 @@ hl.window_rule({
 })
 
 hl.window_rule({
+    name  = "clipboard-history-float",
+    match = { class = "^(clipboard-history)$" },
+    float  = true,
+    size   = "1200 700",
+    center = true,
+})
+
+hl.window_rule({
     name  = "yazi-float",
     match = { class = "^(yazi-float)$" },
     float   = true,

@@ -1,0 +1,10 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Mail
+Exec=sh -c "/opt/google/chrome/google-chrome --profile-directory='Profile 4' --class='Mail' --app='https://mail.google.com/mail/u/0/#inbox'"
+Icon=web-browser
+StartupWMClass=Mail
+Terminal=false
+Keywords=email;gmail;tandem;
