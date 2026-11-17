@@ -40,3 +40,7 @@
 #custom-camera-power.warning { color: @warn; }
 #custom-camera-power.critical { color: @urgent; }
 #custom-supabase.stopped { color: @subtle; }
+
+/* Bluetooth: icon only, struck through when off */
+#bluetooth.off,
+#bluetooth.disabled { text-decoration-line: line-through; }

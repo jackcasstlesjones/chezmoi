@@ -1,7 +1,7 @@
 {
     "bluetooth": {
-        "format": " on",
-        "format-disabled": " off",
+        // Icon only; off/disabled is shown struck through (styles/states.css)
+        "format": "\uf294", // Font Awesome bluetooth-b
         "on-click": "rfkill toggle bluetooth"
     }
 }
