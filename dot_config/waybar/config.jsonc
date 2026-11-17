@@ -18,7 +18,6 @@
         "~/.config/waybar/modules/cpu-mem-temp.jsonc",
         "~/.config/waybar/modules/battery.jsonc",
         "~/.config/waybar/modules/supabase.jsonc",
-        "~/.config/waybar/modules/hypridle.jsonc",
         "~/.config/waybar/modules/tray.jsonc",
         "~/.config/waybar/modules/theme-toggle.jsonc"
         // disabled
@@ -54,7 +53,6 @@
         "temperature",
         "battery",
         "custom/supabase",
-        "custom/hypridle",
         "tray",
         "custom/theme-toggle"
         // "idle_inhibitor",
