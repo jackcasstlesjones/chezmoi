@@ -10,12 +10,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QObject, QPointF, QRectF, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtCore import QEvent, QObject, QPointF, QProcess, QRectF, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QSlider, QStackedWidget,
-    QComboBox, QPushButton, QSpinBox, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QComboBox, QFrame, QPushButton, QScrollArea, QSpinBox, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 HOME = Path.home()
@@ -55,10 +55,10 @@ def stylesheet() -> str:
         wal = json.loads(WAL_COLORS.read_text())
         bg, fg = wal["special"]["background"], wal["special"]["foreground"]
         c = wal["colors"]
-        surface, muted, accent, ok = c["color0"], c["color8"], c["color11"], c["color2"]
+        surface, muted, accent, ok, urgent = c["color0"], c["color8"], c["color11"], c["color2"], c["color1"]
     except (OSError, ValueError, KeyError):
-        bg, fg, surface, muted, accent, ok = "#2e3440", "#d8dee9", "#3b4252", "#4c566a", "#ebcb8b", "#a3be8c"
-    COLORS.update(bg=bg, fg=fg, surface=surface, muted=muted, accent=accent, ok=ok)
+        bg, fg, surface, muted, accent, ok, urgent = "#2e3440", "#d8dee9", "#3b4252", "#4c566a", "#ebcb8b", "#a3be8c", "#bf616a"
+    COLORS.update(bg=bg, fg=fg, surface=surface, muted=muted, accent=accent, ok=ok, urgent=urgent)
     r = "2px"
     return f"""
     * {{ font-family: "JetBrains Mono", monospace; font-size: 10pt; color: {fg}; }}
@@ -103,8 +103,13 @@ def stylesheet() -> str:
     QSpinBox::up-button, QSpinBox::down-button {{ width: 0; border: none; }}
     QPushButton {{ background: {bg}; border: 3px solid {muted}; border-radius: {r}; padding: 8px 18px; }}
     QPushButton:hover, QPushButton:focus {{ border-color: {accent}; color: {accent}; }}
+    QPushButton:disabled {{ color: {muted}; border-color: {surface}; }}
+    QWidget#dialog {{ background: {bg}; border: 3px solid {accent}; border-radius: {r}; }}
+    QPushButton#danger {{ border-color: {urgent}; color: {urgent}; }}
+    QPushButton#danger:hover, QPushButton#danger:focus {{ background: {urgent}; color: {bg}; }}
     QPushButton#range {{ padding: 4px 14px; }}
     QPushButton#range:checked {{ background: {accent}; border-color: {accent}; color: {bg}; }}
+    QLabel#bticon {{ font-family: "Font Awesome 7 Free"; font-weight: 900; font-size: 14pt; color: {accent}; }}
     QToolTip {{ background: {surface}; border: 3px solid {accent}; border-radius: {r}; }}
     """
 
@@ -392,6 +397,7 @@ class TogglesPage(RowNav, QWidget):
             s.valueChanged.connect(lambda v, s=s, write=write: None if s.isSliderDown() else write(v))
             self.sliders.append((read, s, value))
             lay.addWidget(row(label, s, value, stretch_at=1))
+
         lay.addStretch(1)
         self.controls = [box for _, box in self.boxes] + [s for _, s, _ in self.sliders]
 
@@ -407,6 +413,213 @@ class TogglesPage(RowNav, QWidget):
             s.setValue(read())
             s.blockSignals(False)
             value.setText(f"{s.value()}%")
+
+    def showEvent(self, e):
+        self.refresh()
+        self.timer.start()
+
+    def hideEvent(self, e):
+        self.timer.stop()
+
+
+# --------------------------------------------------------------------------- bluetooth
+
+# Font Awesome 7 Solid glyph per BlueZ "Icon" property
+BT_ICONS = {"input-mouse": "\uf8cc", "input-keyboard": "\uf11c", "input-gaming": "\uf11b",
+            "audio-headset": "\uf025", "audio-headphones": "\uf025", "audio-card": "\uf028",
+            "phone": "\uf3cd", "computer": "\uf109"}
+BT_DEFAULT_ICON = "\uf293"
+
+
+def bt_state() -> tuple[dict, list[dict]]:
+    """(adapter, devices) from BlueZ in one D-Bus call (busctl --json; PySide's QtDBus
+    makes BlueZ's nested reply painful to unpack)."""
+    try:
+        out = subprocess.run(["busctl", "--json=short", "call", "org.bluez", "/",
+                              "org.freedesktop.DBus.ObjectManager", "GetManagedObjects"],
+                             capture_output=True, text=True, timeout=3).stdout
+        objects = json.loads(out)["data"][0]
+    except (OSError, ValueError, KeyError, IndexError, subprocess.TimeoutExpired):
+        return {}, []
+    adapter, devices = {}, []
+    for path, ifaces in objects.items():
+        val = lambda iface, key: ifaces.get(iface, {}).get(key, {}).get("data")
+        if "org.bluez.Adapter1" in ifaces and not adapter:
+            adapter = {"powered": val("org.bluez.Adapter1", "Powered"),
+                       "discovering": val("org.bluez.Adapter1", "Discovering")}
+        if "org.bluez.Device1" in ifaces:
+            d = "org.bluez.Device1"
+            name = val(d, "Name")
+            if not name and not val(d, "Paired"):
+                continue  # nameless nearby beacons
+            devices.append({"mac": val(d, "Address"), "name": val(d, "Alias") or name,
+                            "icon": val(d, "Icon") or "", "paired": bool(val(d, "Paired")),
+                            "connected": bool(val(d, "Connected")), "rssi": val(d, "RSSI"),
+                            "battery": val("org.bluez.Battery1", "Percentage")})
+    devices.sort(key=lambda x: (not x["connected"], not x["paired"],
+                                -(x["rssi"] or -999) if not x["paired"] else 0, x["name"].lower()))
+    return adapter, devices
+
+
+class DeviceRow(QWidget):
+    """One device: icon, name, status, and its action buttons."""
+
+    def __init__(self, page: "BluetoothPage", mac: str):
+        super().__init__(objectName="row")
+        self.setAttribute(Qt.WA_StyledBackground, True)  # QSS box on a QWidget subclass
+        self.page, self.mac = page, mac
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(16, 10, 16, 10)
+        lay.setSpacing(14)
+        self.icon = QLabel(objectName="bticon", alignment=Qt.AlignCenter)
+        self.icon.setFixedWidth(26)
+        self.text = QLabel()
+        self.primary = QPushButton()
+        self.secondary = QPushButton()
+        for b in (self.primary, self.secondary):
+            b.setCursor(Qt.PointingHandCursor)
+            b.setFocusPolicy(Qt.StrongFocus)
+        self.primary.setFixedWidth(130)
+        self.secondary.setFixedWidth(100)
+        self.primary.clicked.connect(lambda: self.page.act(self.mac, self.primary_action))
+        self.secondary.clicked.connect(self.confirm_secondary)
+        lay.addWidget(self.icon)
+        lay.addWidget(self.text, 1)
+        lay.addWidget(self.primary)
+        lay.addWidget(self.secondary)
+
+    def confirm_secondary(self):
+        if self.secondary_action != "remove":
+            return self.page.act(self.mac, self.secondary_action)
+        self.window().confirm.ask(
+            f"<b>Forget {self.name}?</b><br><br>It will be unpaired; you'll need to pair it again to use it.",
+            "Forget", lambda: self.page.act(self.mac, "remove"))
+
+    def update_from(self, d: dict, duplicate: bool, busy: str | None):
+        self.name = d["name"]
+        self.icon.setText(BT_ICONS.get(d["icon"], BT_DEFAULT_ICON))
+        status = ("Connected" if d["connected"] else "Paired" if d["paired"] else "Nearby")
+        if d["battery"] is not None:
+            status += f" · {d['battery']}%"
+        if duplicate:
+            status += f" · …{d['mac'][-5:]}"  # same name, several entries (e.g. Easy-Switch channels)
+        self.text.setText(f"<b>{d['name']}</b><br><span style='font-size:9pt'>{status}</span>")
+        if d["paired"]:
+            self.primary_action = "disconnect" if d["connected"] else "connect"
+            self.secondary_action = "remove"
+            self.secondary.setText("Forget")
+        else:
+            self.primary_action = "pair"
+            self.secondary_action = None
+        self.secondary.setVisible(self.secondary_action is not None)
+        labels = {"connect": "Connect", "disconnect": "Disconnect", "pair": "Pair"}
+        busy_labels = {"connect": "Connecting…", "disconnect": "Disconnecting…", "pair": "Pairing…",
+                       "remove": "Forgetting…"}
+        self.primary.setText(busy_labels[busy] if busy else labels[self.primary_action])
+        self.primary.setEnabled(busy is None)
+        self.secondary.setEnabled(busy is None)
+
+
+class BluetoothPage(RowNav, QWidget):
+    def __init__(self):
+        super().__init__()
+        w, lay = page("Bluetooth", "Devices that need a passkey typed in may still need bluetui (Super+B).")
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(w)
+
+        self.power = Switch()
+        self.power.clicked.connect(lambda on: self.run_bt(["power", "on" if on else "off"]))
+        self.scan = QPushButton("Scan")
+        self.scan.setCursor(Qt.PointingHandCursor)
+        self.scan.setFixedWidth(130)
+        self.scan.clicked.connect(self.toggle_scan)
+        top = row(labelled("Bluetooth", "Adapter power"), self.scan, self.power)
+        lay.addWidget(top)
+
+        holder = QWidget(objectName="page")
+        self.list_layout = QVBoxLayout(holder)
+        self.list_layout.setContentsMargins(0, 0, 8, 0)
+        self.list_layout.setSpacing(10)
+        self.empty = QLabel("No devices", objectName="hint")
+        self.list_layout.addWidget(self.empty)
+        self.list_layout.addStretch(1)
+        scroll = QScrollArea(widgetResizable=True, frameShape=QFrame.NoFrame)
+        scroll.setWidget(holder)
+        scroll.setFocusPolicy(Qt.NoFocus)
+        self.scroll = scroll
+        lay.addWidget(scroll, 1)
+
+        self.rows: dict[str, DeviceRow] = {}
+        self.busy: dict[str, str] = {}  # mac -> action in progress
+        self.procs: list[QProcess] = []
+        self.scan_proc: QProcess | None = None
+        self.controls = [self.power, self.scan]
+        self.timer = QTimer(self, interval=2000, timeout=self.refresh)
+
+    def run_bt(self, args: list[str], done=None):
+        """Run bluetoothctl in the background, then refresh."""
+        proc = QProcess(self)
+        self.procs.append(proc)
+        proc.finished.connect(lambda *_: (self.procs.remove(proc), done and done(), self.refresh()))
+        proc.start("bluetoothctl", args)
+        return proc
+
+    def act(self, mac: str, action: str | None):
+        if not action or mac in self.busy:
+            return
+        self.busy[mac] = action
+        if action == "pair":  # pair, trust (auto-reconnect), connect
+            proc = QProcess(self)
+            self.procs.append(proc)
+            proc.finished.connect(lambda *_: (self.procs.remove(proc), self.busy.pop(mac, None), self.refresh()))
+            proc.start("sh", ["-c", f"bluetoothctl pair {mac} && bluetoothctl trust {mac} && bluetoothctl connect {mac}"])
+        else:
+            self.run_bt([action, mac], done=lambda: self.busy.pop(mac, None))
+        self.refresh()
+
+    def nav(self, e: QKeyEvent) -> bool:
+        handled = super().nav(e)
+        if (fw := QApplication.focusWidget()) and self.isAncestorOf(fw):
+            self.scroll.ensureWidgetVisible(fw, 0, 20)  # follow keyboard focus down the list
+        return handled
+
+    def toggle_scan(self):
+        if self.scan_proc and self.scan_proc.state() != QProcess.NotRunning:
+            self.scan_proc.kill()  # ends discovery
+        else:
+            self.scan_proc = self.run_bt(["--timeout", "30", "scan", "on"])
+        QTimer.singleShot(300, self.refresh)
+
+    def refresh(self):
+        adapter, devices = bt_state()
+        self.power.setChecked(bool(adapter.get("powered")))
+        scanning = bool(adapter.get("discovering")) or (
+            self.scan_proc is not None and self.scan_proc.state() != QProcess.NotRunning)
+        self.scan.setText("Stop scan" if scanning else "Scan")
+
+        names = [d["name"] for d in devices]
+        seen = set()
+        for d in devices:
+            seen.add(d["mac"])
+            r = self.rows.get(d["mac"])
+            if r is None:
+                r = self.rows[d["mac"]] = DeviceRow(self, d["mac"])
+            r.update_from(d, names.count(d["name"]) > 1, self.busy.get(d["mac"]))
+        for mac in list(self.rows):
+            if mac not in seen:
+                self.rows.pop(mac).deleteLater()
+        # Keep widgets (and keyboard focus) but follow the sorted order
+        for i, d in enumerate(devices):
+            self.list_layout.insertWidget(i, self.rows[d["mac"]])
+        self.empty.setVisible(not devices)
+        if (fw := QApplication.focusWidget()) and self.isAncestorOf(fw):
+            self.scroll.ensureWidgetVisible(fw)  # keep the keyboard-focused device on screen
+        # From the data, not isVisible(): rows just added aren't shown until the next event loop pass
+        self.controls = [self.power, self.scan]
+        for d in devices:
+            r = self.rows[d["mac"]]
+            self.controls += [r.primary] + ([r.secondary] if r.secondary_action else [])
 
     def showEvent(self, e):
         self.refresh()
@@ -1056,7 +1269,82 @@ class KeybindsPage(QWidget):
 
 # --------------------------------------------------------------------------- window
 
-PAGES = ["look", "appearance", "toggles", "lock", "battery", "keybinds"]  # `hypr-settings <page>` opens on that page
+PAGES = ["look", "appearance", "toggles", "bluetooth", "lock", "battery", "keybinds"]  # `hypr-settings <page>` opens on that page
+
+
+class Confirm(QWidget):
+    """In-window confirmation: dims the window, asks in a box. Cancel is focused by default.
+    Keys: y confirm, n/Esc cancel, h/l/Tab switch button, Enter/Space press."""
+
+    def __init__(self, parent: QWidget):
+        super().__init__(parent)
+        self.hide()
+        outer = QVBoxLayout(self)
+        outer.setAlignment(Qt.AlignCenter)
+        self.box = QWidget(objectName="dialog")
+        self.box.setAttribute(Qt.WA_StyledBackground, True)
+        self.box.setFixedWidth(460)
+        lay = QVBoxLayout(self.box)
+        lay.setContentsMargins(24, 20, 24, 20)
+        lay.setSpacing(16)
+        self.message = QLabel(wordWrap=True)
+        lay.addWidget(self.message)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        self.cancel = QPushButton("Cancel")
+        self.ok = QPushButton(objectName="danger")
+        for b in (self.cancel, self.ok):
+            b.setCursor(Qt.PointingHandCursor)
+            b.setFocusPolicy(Qt.StrongFocus)
+            buttons.addWidget(b)
+        lay.addLayout(buttons)
+        outer.addWidget(self.box)
+        self.cancel.clicked.connect(self.close_dialog)
+        self.ok.clicked.connect(self.accept)
+        self.on_yes = None
+        self.return_focus = None
+
+    def ask(self, text: str, confirm_label: str, on_yes):
+        self.message.setText(text)
+        self.ok.setText(confirm_label)
+        self.on_yes = on_yes
+        self.return_focus = QApplication.focusWidget()
+        self.setGeometry(self.parentWidget().rect())
+        self.raise_()
+        self.show()
+        self.cancel.setFocus()
+
+    def accept(self):
+        on_yes = self.on_yes
+        self.close_dialog()
+        if on_yes:
+            on_yes()
+
+    def close_dialog(self):
+        self.hide()
+        if self.return_focus:
+            self.return_focus.setFocus()
+
+    def key(self, e: QKeyEvent) -> bool:
+        key, text = e.key(), e.text().lower()
+        if key == Qt.Key_Escape or text == "n":
+            self.close_dialog()
+        elif text == "y":
+            self.accept()
+        elif key in (Qt.Key_H, Qt.Key_L, Qt.Key_Left, Qt.Key_Right, Qt.Key_Tab, Qt.Key_Backtab):
+            (self.ok if self.cancel.hasFocus() else self.cancel).setFocus()
+        elif key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+            (self.ok if self.ok.hasFocus() else self.cancel).click()
+        return True  # modal: swallow everything else
+
+    def mousePressEvent(self, e):
+        if not self.box.geometry().contains(e.position().toPoint()):
+            self.close_dialog()  # click outside the box cancels
+
+    def paintEvent(self, e):
+        shade = QColor(COLORS["bg"])
+        shade.setAlpha(170)
+        QPainter(self).fillRect(self.rect(), shade)
 
 
 class Settings(QMainWindow):
@@ -1074,6 +1362,7 @@ class Settings(QMainWindow):
         look = LookPage()
         look.applied.connect(lambda: QApplication.instance().setStyleSheet(stylesheet()))
         for name, widget in (("  Look", look), ("  Appearance", AppearancePage()), ("  Toggles", TogglesPage()),
+                             ("  Bluetooth", BluetoothPage()),
                              ("  Lock & idle", LockPage()), ("  Battery", BatteryPage()),
                              ("  Keybinds", KeybindsPage())):
             self.nav.addItem(name)
@@ -1086,6 +1375,12 @@ class Settings(QMainWindow):
         lay.addWidget(self.nav)
         lay.addWidget(self.stack, 1)
         self.setCentralWidget(root)
+        self.confirm = Confirm(root)
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if self.confirm.isVisible():
+            self.confirm.setGeometry(self.centralWidget().rect())
 
     def step_page(self, delta: int):
         self.nav.setCurrentRow((self.nav.currentRow() + delta) % self.nav.count())
@@ -1109,6 +1404,8 @@ class KeyNav(QObject):
         if e.type() != QEvent.KeyPress or not isinstance(obj, QWidget):
             return False
         key = e.key()
+        if self.win.confirm.isVisible():
+            return self.win.confirm.key(e)
         if e.modifiers() == Qt.ControlModifier and key in (Qt.Key_H, Qt.Key_J, Qt.Key_K, Qt.Key_L):
             if key == Qt.Key_H:
                 self.win.nav.setFocus()
