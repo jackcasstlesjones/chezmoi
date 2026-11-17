@@ -87,6 +87,8 @@ hl.window_rule({
     size    = "1200 800",
     center  = true,
     opacity = "0.95 0.8",
+    -- Fade in like fuzzel (a layer): popin at 100% = no scaling, just the fade
+    animation = "popin 100%",
 })
 
 hl.window_rule({
@@ -95,6 +97,8 @@ hl.window_rule({
     float  = true,
     size   = "1100 720",
     center = true,
+    -- Fade in like fuzzel (a layer): popin at 100% = no scaling, just the fade
+    animation = "popin 100%",
 })
 
 -- Now-playing popup from the waybar media module. The app re-sends this rule
