@@ -16,7 +16,6 @@ if [[ -z "$latest" ]]; then
     exit 1
 fi
 
-uri="file://$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$latest")"
-printf '%s\r\n' "$uri" | wl-copy --type text/uri-list
+"$HOME/.local/bin/clip" "$latest" >/dev/null
 
 notify-send "Copied to clipboard" "$(basename "$latest")"

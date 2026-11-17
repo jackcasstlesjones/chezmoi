@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Copy files to the clipboard *as files* (text/uri-list), so pasting into Discord,
+# a browser upload or an AI chat attaches them instead of pasting a path.
+#   clip report.pdf
+#   clip *.png
+
+set -eu
+
+if (($# == 0)); then
+    echo "usage: clip FILE..." >&2
+    exit 1
+fi
+
+uris=""
+for f in "$@"; do
+    if [[ ! -f "$f" ]]; then
+        echo "clip: not a file: $f" >&2
+        exit 1
+    fi
+    path="$(realpath "$f")"
+    uris+="file://$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$path")"$'\r\n'
+done
+
+printf '%s' "$uris" | wl-copy --type text/uri-list
+echo "Copied $# file(s) to the clipboard"
