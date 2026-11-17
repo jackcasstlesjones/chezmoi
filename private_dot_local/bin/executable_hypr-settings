@@ -22,6 +22,9 @@ HOME = Path.home()
 WALLPAPER_DIR = HOME / ".config/wallpapers"
 WALLPAPER_SCRIPT = HOME / ".config/waybar/scripts/wallpaper-theme.sh"
 IDLE_SCRIPT = HOME / ".config/scripts/hypridle-control.sh"
+LOCK_WALLPAPER = HOME / ".local/state/hypr/lock-wallpaper"  # symlink hyprlock.conf reads
+LOCK_SCRIPT = HOME / ".config/scripts/lock.sh"
+LOCK_SHUFFLE = HOME / ".local/state/hypr/lock-shuffle"  # exists = random lock image each time
 WAL_COLORS = HOME / ".cache/wal/colors.json"
 BINDS_DIR = HOME / ".config/hypr/binds"
 VARS_FILE = HOME / ".config/hypr/config/vars.lua"
@@ -155,10 +158,25 @@ class LookPage(QWidget):
 
     def __init__(self):
         super().__init__()
-        w, lay = page("Look", "Click a wallpaper to apply it and recolour the desktop.")
+        w, lay = page("Look", "Pick where a wallpaper goes (t to switch), then click one.")
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(w)
+
+        # Where a clicked wallpaper goes: the desktop (recolours everything), the lock screen, or both
+        targets = QHBoxLayout()
+        self.target_buttons = []
+        for label, target in (("Desktop", "desktop"), ("Lock screen", "lock"), ("Both", "both")):
+            b = QPushButton(label, checkable=True, objectName="range")
+            b.setCursor(Qt.PointingHandCursor)
+            b.setFocusPolicy(Qt.NoFocus)  # keyboard focus stays on the grid; `t` switches
+            b.clicked.connect(lambda _=False, target=target: self.set_target(target))
+            self.target_buttons.append((b, target))
+            targets.addWidget(b)
+        targets.addStretch(1)
+        self.lock_label = QLabel(objectName="hint")
+        targets.addWidget(self.lock_label)
+        lay.addLayout(targets)
 
         self.status = QLabel("", objectName="hint")
         self.walls = QListWidget(objectName="walls")
@@ -186,8 +204,9 @@ class LookPage(QWidget):
             self.walls.addItem(item)
             self.items[path.name] = item
             QThreadPool.globalInstance().start(ThumbJob(path, self.signals))
-        self.mark_current()
         self.proc = None
+        self.set_target("desktop")
+        self.show_lock()
 
     def nav(self, e: QKeyEvent) -> bool:
         arrow = VIM_ARROWS.get(e.key())
@@ -197,7 +216,32 @@ class LookPage(QWidget):
         if e.key() == Qt.Key_Space and self.walls.currentItem():
             self.apply(self.walls.currentItem())
             return True
+        if e.text() == "t":
+            order = [t for _, t in self.target_buttons]
+            self.set_target(order[(order.index(self.target) + 1) % len(order)])
+            return True
         return False
+
+    def set_target(self, target: str):
+        self.target = target
+        for b, t in self.target_buttons:
+            b.setChecked(t == target)
+        # Highlight what that target currently shows
+        lock_item = self.items.get(self.lock_name())
+        if target == "lock" and lock_item:
+            self.walls.setCurrentItem(lock_item)
+        else:
+            self.mark_current()
+
+    def lock_name(self) -> str:
+        try:
+            return LOCK_WALLPAPER.resolve(strict=True).name
+        except OSError:
+            return ""
+
+    def show_lock(self):
+        name = self.lock_name()
+        self.lock_label.setText(f"Lock screen: {Path(name).stem}" if name else "Lock screen: not set")
 
     def focus_first(self):
         self.walls.setFocus()
@@ -215,6 +259,12 @@ class LookPage(QWidget):
         if self.proc and self.proc.poll() is None:
             return  # previous apply still running
         name = item.data(Qt.UserRole)
+        if self.target in ("lock", "both"):
+            run(str(WALLPAPER_SCRIPT), "lock", name)
+            self.show_lock()
+            if self.target == "lock":
+                self.status.setText(f"Lock screen set to {Path(name).stem}")
+                return
         self.status.setText(f"Applying {name}…")
         self.proc = subprocess.Popen([str(WALLPAPER_SCRIPT), "apply", name],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -726,15 +776,28 @@ class LockPage(RowNav, QWidget):
             self.spins[which] = spin
             lay.addWidget(row(labelled(title, hint), spin))
 
+        self.shuffle = Switch()
+        self.shuffle.clicked.connect(self.set_shuffle)
+        lay.addWidget(row(labelled("Shuffle lock screen", "A random wallpaper (and its colours) each time you lock"),
+                          self.shuffle))
+
         lock_now = QPushButton("Lock now")
         lock_now.setCursor(Qt.PointingHandCursor)
-        lock_now.clicked.connect(lambda: spawn("loginctl", "lock-session"))
+        lock_now.clicked.connect(lambda: spawn(str(LOCK_SCRIPT)))
         lay.addWidget(lock_now, 0, Qt.AlignLeft)
         lay.addStretch(1)
-        self.controls = [self.idle, *self.spins.values(), lock_now]
+        self.controls = [self.idle, *self.spins.values(), self.shuffle, lock_now]
+
+    def set_shuffle(self, on: bool):
+        if on:
+            LOCK_SHUFFLE.parent.mkdir(parents=True, exist_ok=True)
+            LOCK_SHUFFLE.touch()
+        else:
+            LOCK_SHUFFLE.unlink(missing_ok=True)
 
     def refresh(self):
         self.idle.setChecked(IDLE_TOGGLE.read())
+        self.shuffle.setChecked(LOCK_SHUFFLE.exists())
         times = run(str(IDLE_SCRIPT), "get").split()
         for (which, spin), seconds in zip(self.spins.items(), times):
             spin.blockSignals(True)
@@ -1073,7 +1136,7 @@ COMMAND_LABELS = [
     (r"copy-latest-download", "Copy latest download"),
     (r"bluetui", "Bluetooth"),
     (r"toggle-samsung-res", "Toggle Samsung monitor resolution"),
-    (r"^hyprlock", "Lock screen"),
+    (r"^hyprlock|lock\.sh$", "Lock screen"),
     (r"yazi-cwd", "Yazi file manager"),
     (r"fuzzel-find-dir", "Find a folder"),
     (r"scratchpad\.sh", "Notes scratchpad"),
