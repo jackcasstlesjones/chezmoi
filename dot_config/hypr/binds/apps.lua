@@ -3,7 +3,8 @@ local mainMod, hyperKey, terminal, fileManager = v.mainMod, v.hyperKey, v.termin
 
 hl.bind(mainMod  .. " + I",     hl.dsp.exec_cmd(terminal))
 hl.bind(mainMod  .. " + E",     hl.dsp.exec_cmd(fileManager))
-hl.bind(mainMod  .. " + M",     hl.dsp.exec_cmd("~/.config/scripts/system-menu.sh"))
+hl.bind(mainMod  .. " + M",     hl.dsp.exec_cmd("~/.local/bin/hypr-settings"))
+hl.bind(mainMod  .. " + SHIFT + M", hl.dsp.exec_cmd("~/.config/scripts/system-menu.sh"))
 hl.bind(mainMod  .. " + W",     hl.dsp.exec_cmd("wlogout"))
 hl.bind(mainMod  .. " + space", hl.dsp.exec_cmd("fuzzel"))
 hl.bind(mainMod  .. " + P",     hl.dsp.exec_cmd("hyprpicker -a"))

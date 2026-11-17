@@ -1057,6 +1057,7 @@ COMMAND_LABELS = [
     (r"^kitty$", "Terminal"),
     (r"^thunar", "File manager"),
     (r"system-menu", "System menu"),
+    (r"hypr-settings$", "Settings"),
     (r"^wlogout", "Power menu"),
     (r"^fuzzel$", "App launcher"),
     (r"hyprpicker", "Colour picker"),
