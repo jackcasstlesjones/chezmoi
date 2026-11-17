@@ -1,37 +1,199 @@
 #!/usr/bin/env python3
 """Now-playing popup for the waybar media module.
 
-Album art over a blurred copy of itself, seekable progress, transport,
-shuffle/loop and player volume. Drives the player with playerctl, prefers
-Spotify, and is styled from the current pywal colours with Hyprland's square look.
-Closes on Esc or when it loses focus.
+A layer-shell surface (QML + layer-shell-qt, same as audio-popup), so follow-mouse can't
+take focus; a transparent full-screen layer behind it closes it on any outside click.
+Single instance: launching again closes it. Album art over a blurred copy of itself,
+seekable progress, transport, shuffle/repeat (hidden for Spotify, whose MPRIS ignores
+them) and player volume. Clicks update the UI at once and hold briefly while the player
+catches up. Keys: Space play/pause, h/l or ←/→ prev/next, Esc close.
 """
 
 import json
+import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QRectF, QSize, Qt, QTimer, QUrl
-from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPixmap
-from PySide6.QtNetwork import QLocalServer, QLocalSocket, QNetworkAccessManager, QNetworkRequest
-from PySide6.QtWidgets import (
-    QApplication, QGraphicsBlurEffect, QGraphicsPixmapItem, QGraphicsScene, QHBoxLayout,
-    QLabel, QPushButton, QSlider, QVBoxLayout, QWidget,
-)
+os.environ["QT_WAYLAND_SHELL_INTEGRATION"] = "layer-shell"  # before Qt starts
 
+from PySide6.QtCore import Property, QByteArray, QObject, Signal, Slot  # noqa: E402
+from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
+from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+
+SOCKET = "media-controller"
 PLAYERS = "spotify,%any"
-SOCKET = "media-controller"  # single instance: launching again closes the open popup
 WAL_COLORS = Path.home() / ".cache/wal/colors.json"
-WIDTH, ART = 420, 372
-BAR_BOTTOM, GAP = 56, 10  # waybar margin-top 20 + height 36; Hyprland gaps_in
 FIELDS = ["status", "position", "mpris:length", "volume", "shuffle", "loop",
           "title", "artist", "album", "mpris:artUrl", "playerName"]
+# Players whose MPRIS ignores Shuffle/LoopStatus writes (and always reports them off).
+# Spotify: https://community.spotify.com/t5/Desktop-Linux/SOLVED-Linux-Spotify-DBus-MPRIS2-support-not-fully-working/m-p/1208249
+NO_SHUFFLE_LOOP = {"spotify"}
+HOLD = 1.5  # seconds a clicked control ignores polled state
 
-# Font Awesome 7 Free Solid
-ICON = {"play": "", "pause": "", "prev": "", "next": "",
-        "shuffle": "", "loop": "", "volume": "", "music": ""}
+QML = r"""
+import QtQuick
+import QtQuick.Window
+import QtQuick.Effects
+import org.kde.layershell 1.0 as LayerShell
+
+QtObject {
+    property var catcher: Window {
+        visible: true
+        color: "transparent"
+        LayerShell.Window.scope: "media-controller-catcher"
+        LayerShell.Window.layer: LayerShell.Window.LayerTop
+        LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorBottom
+                                   | LayerShell.Window.AnchorLeft | LayerShell.Window.AnchorRight
+        LayerShell.Window.exclusionZone: -1
+        LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityNone
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onPressed: Qt.quit() }
+    }
+
+    property var popup: Window {
+        id: win
+        width: 420
+        height: content.implicitHeight + 48
+        visible: true
+        color: theme.bg
+        LayerShell.Window.scope: "media-controller"
+        LayerShell.Window.layer: LayerShell.Window.LayerOverlay
+        LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorLeft
+        LayerShell.Window.margins.top: 10   // below waybar's reserved area
+        LayerShell.Window.margins.left: 20
+        LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityExclusive
+
+        function mmss(us) { const s = Math.max(0, Math.floor(us / 1e6)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") }
+
+        // Blurred, darkened art behind everything
+        Image {
+            id: backdrop; anchors.fill: parent; source: player.art; fillMode: Image.PreserveAspectCrop
+            visible: false; asynchronous: true
+        }
+        MultiEffect {
+            anchors.fill: parent; source: backdrop; visible: player.art !== ""
+            blurEnabled: true; blur: 1.0; blurMax: 64; brightness: -0.45; saturation: 0.1
+        }
+
+        Item {
+            anchors.fill: parent; focus: true
+            Keys.onPressed: (e) => {
+                if (e.key === Qt.Key_Escape) Qt.quit()
+                else if (e.key === Qt.Key_Space) player.playPause()
+                else if (e.key === Qt.Key_L || e.key === Qt.Key_Right) player.next()
+                else if (e.key === Qt.Key_H || e.key === Qt.Key_Left) player.previous()
+                else return
+                e.accepted = true
+            }
+        }
+
+        Rectangle { anchors.fill: parent; color: "transparent"; border.color: theme.accent; border.width: 3; radius: 2; z: 10 }
+
+        component IconButton: Rectangle {
+            property string glyph
+            property bool active: false
+            property bool primary: false
+            signal clicked
+            width: primary ? 56 : 44; height: 44; radius: 2
+            color: primary && area.containsMouse ? theme.accent : "transparent"
+            border.width: 3
+            border.color: primary ? theme.accent : (area.containsMouse ? theme.muted : "transparent")
+            Text {
+                anchors.centerIn: parent; text: parent.glyph
+                font.family: "Font Awesome 7 Free"; font.weight: Font.Black; font.pixelSize: parent.primary ? 20 : 16
+                color: parent.primary ? (area.containsMouse ? theme.bg : theme.accent) : (parent.active ? theme.accent : theme.fg)
+            }
+            Rectangle {  // underline when a toggle is on
+                visible: parent.active; anchors.bottom: parent.bottom; anchors.bottomMargin: 6
+                anchors.horizontalCenter: parent.horizontalCenter; width: 16; height: 3; color: theme.accent
+            }
+            MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: parent.clicked() }
+        }
+
+        component Bar: Item {
+            property real value: 0          // 0..1
+            property real dragValue: 0
+            property alias pressed: barArea.pressed
+            signal moved(real v)
+            signal released(real v)
+            height: 20
+            readonly property real shown: pressed ? dragValue : value
+            Rectangle { id: groove; anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 6; radius: 2; color: theme.muted }
+            Rectangle { anchors.verticalCenter: parent.verticalCenter; width: groove.width * parent.shown; height: 6; radius: 2; color: theme.accent }
+            Rectangle { anchors.verticalCenter: parent.verticalCenter; x: groove.width * parent.shown - 6; width: 12; height: 18; radius: 2; color: theme.fg }
+            MouseArea {
+                id: barArea; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                function at(px) { return Math.max(0, Math.min(1, px / width)) }
+                onPressed: (m) => { parent.dragValue = at(m.x); parent.moved(parent.dragValue) }
+                onPositionChanged: (m) => { if (pressed) { parent.dragValue = at(m.x); parent.moved(parent.dragValue) } }
+                onReleased: parent.released(parent.dragValue)
+            }
+        }
+
+        Column {
+            id: content
+            x: 24; y: 24; width: win.width - 48
+            spacing: 10
+
+            Rectangle {  // album art
+                width: parent.width; height: width; radius: 2
+                color: theme.surface; border.color: theme.muted; border.width: 3
+                Image {
+                    anchors.fill: parent; anchors.margins: 3; source: player.art
+                    fillMode: Image.PreserveAspectCrop; asynchronous: true; visible: player.art !== ""
+                }
+                Text {
+                    anchors.centerIn: parent; visible: player.art === ""; text: ""
+                    font.family: "Font Awesome 7 Free"; font.weight: Font.Black; font.pixelSize: 64; color: theme.muted
+                }
+            }
+            Item { width: 1; height: 2 }
+            Text {
+                width: parent.width; text: player.title || "Nothing playing"; elide: Text.ElideRight
+                color: theme.fg; font.family: theme.font; font.pixelSize: 18; font.bold: true
+            }
+            Text {
+                width: parent.width; text: [player.artist, player.album].filter(x => x).join(" — "); elide: Text.ElideRight
+                color: theme.fg; opacity: 0.8; font.family: theme.font; font.pixelSize: 13
+            }
+            Bar {
+                id: progress; width: parent.width
+                value: player.length > 0 ? player.position / player.length : 0
+                onReleased: (v) => player.seek(v)
+            }
+            Item {
+                width: parent.width; height: 16
+                Text { text: win.mmss(progress.pressed ? progress.dragValue * player.length : player.position); color: theme.fg; font.family: theme.font; font.pixelSize: 12 }
+                Text { anchors.right: parent.right; text: win.mmss(player.length); color: theme.fg; font.family: theme.font; font.pixelSize: 12 }
+            }
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter; spacing: 8
+                IconButton { glyph: ""; visible: player.shuffleLoop; active: player.shuffle; onClicked: player.toggleShuffle() }
+                IconButton { glyph: ""; onClicked: player.previous() }
+                IconButton { glyph: player.playing ? "" : ""; primary: true; onClicked: player.playPause() }
+                IconButton { glyph: ""; onClicked: player.next() }
+                IconButton { glyph: ""; visible: player.shuffleLoop; active: player.loop !== "None"; onClicked: player.cycleLoop() }
+            }
+            Row {
+                width: parent.width; spacing: 12
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter; text: ""
+                    font.family: "Font Awesome 7 Free"; font.weight: Font.Black; font.pixelSize: 14; color: theme.fg
+                }
+                Bar {
+                    width: parent.width - 28; anchors.verticalCenter: parent.verticalCenter
+                    value: player.volume / 100
+                    onMoved: (v) => player.setVolume(Math.round(v * 100))
+                }
+            }
+        }
+
+        Timer { interval: 500; running: true; repeat: true; onTriggered: player.refresh() }
+    }
+}
+"""
 
 
 def playerctl(*args: str) -> str:
@@ -51,340 +213,130 @@ def playerctl_bg(*args: str) -> None:
         pass
 
 
-# Players whose MPRIS ignores Shuffle/LoopStatus writes (and always reports them off),
-# so those buttons would lie. Spotify: https://community.spotify.com/t5/Desktop-Linux/SOLVED-Linux-Spotify-DBus-MPRIS2-support-not-fully-working/m-p/1208249
-NO_SHUFFLE_LOOP = {"spotify"}
+class Player(QObject):
+    changed = Signal()
 
-HOLD = 1.5  # seconds a clicked control ignores polled state while the player catches up
+    # QML-visible state; must be declared in the class body to reach Qt's meta-object
+    title = Property(str, lambda self: self.s["title"], notify=changed)
+    artist = Property(str, lambda self: self.s["artist"], notify=changed)
+    album = Property(str, lambda self: self.s["album"], notify=changed)
+    art = Property(str, lambda self: self.s["art"], notify=changed)
+    playing = Property(bool, lambda self: self.s["playing"], notify=changed)
+    position = Property(float, lambda self: self.s["position"], notify=changed)
+    length = Property(float, lambda self: self.s["length"], notify=changed)
+    volume = Property(int, lambda self: self.s["volume"], notify=changed)
+    shuffle = Property(bool, lambda self: self.s["shuffle"], notify=changed)
+    loop = Property(str, lambda self: self.s["loop"], notify=changed)
+    shuffleLoop = Property(bool, lambda self: self.s["shuffleLoop"], notify=changed)
 
+    def __init__(self):
+        super().__init__()
+        self.s = {"title": "", "artist": "", "album": "", "art": "", "playing": False,
+                  "position": 0.0, "length": 0.0, "volume": 0, "shuffle": False,
+                  "loop": "None", "shuffleLoop": False}
+        self.held: dict[str, float] = {}
+        self.refresh()
 
-def read_state() -> dict | None:
-    fmt = "\x1f".join(f"{{{{{f}}}}}" for f in FIELDS)  # unit separator: safe in titles
-    out = playerctl("metadata", "--format", fmt)
-    if not out:
-        return None
-    return dict(zip(FIELDS, out.split("\x1f")))
+    def hold(self, key: str):
+        self.held[key] = time.monotonic() + HOLD
 
+    def is_held(self, key: str) -> bool:
+        return self.held.get(key, 0) > time.monotonic()
 
-def mmss(us: float) -> str:
-    s = max(0, int(us // 1_000_000))
-    return f"{s // 60}:{s % 60:02d}"
-
-
-def hyprctl_json(*args: str):
-    try:
-        return json.loads(subprocess.run(["hyprctl", "-j", *args], capture_output=True,
-                                         text=True, timeout=2).stdout)
-    except (OSError, ValueError, subprocess.TimeoutExpired):
-        return None
-
-
-def place_under_cursor():
-    """Point the window rule at the spot under the cursor (the clicked waybar module).
-
-    Rule `move` is monitor-local, so work out which monitor the cursor is on.
-    """
-    cur, mons = hyprctl_json("cursorpos"), hyprctl_json("monitors")
-    if not cur or not mons:
-        return
-    for m in mons:
-        w, h = m["width"] / m["scale"], m["height"] / m["scale"]
-        if m["x"] <= cur["x"] < m["x"] + w and m["y"] <= cur["y"] < m["y"] + h:
-            x = int(min(max(cur["x"] - m["x"] - WIDTH / 2, 20), w - WIDTH - 20))
-            rule = (f'hl.window_rule({{ name = "media-controller-float", '
-                    f'match = {{ class = "^(media-controller)$" }}, float = true, pin = true, '
-                    f'animation = "slide top", monitor = "{m["name"]}", '
-                    f'move = "{x} {BAR_BOTTOM + GAP}" }})')
-            subprocess.run(["hyprctl", "eval", rule], capture_output=True, timeout=2)
+    @Slot()
+    def refresh(self):
+        out = playerctl("metadata", "--format", "\x1f".join(f"{{{{{f}}}}}" for f in FIELDS))
+        if not out:
+            self.s.update(title="", artist="", album="", art="", playing=False, position=0.0, length=0.0)
+            self.changed.emit()
             return
+        m = dict(zip(FIELDS, out.split("\x1f")))
+        length = float(m["mpris:length"] or 0)
+        art = m["mpris:artUrl"]
+        self.s.update(title=m["title"], artist=m["artist"], album=m["album"], length=length,
+                      art=art if art.startswith(("http", "file:")) else "",
+                      shuffleLoop=m["playerName"] not in NO_SHUFFLE_LOOP)
+        if not self.is_held("playing"):
+            self.s["playing"] = m["status"] == "Playing"
+        if not self.is_held("position"):
+            self.s["position"] = min(float(m["position"] or 0), length or float("inf"))
+        if not self.is_held("volume") and m["volume"]:
+            self.s["volume"] = round(float(m["volume"]) * 100)
+        if not self.is_held("shuffle"):
+            self.s["shuffle"] = m["shuffle"] == "true"
+        if not self.is_held("loop"):
+            self.s["loop"] = m["loop"] or "None"
+        self.changed.emit()
+
+    def _set(self, key, value, *cmd):
+        """Optimistic update: show it now, tell the player in the background."""
+        self.s[key] = value
+        self.hold(key)
+        self.changed.emit()
+        playerctl_bg(*cmd)
+
+    @Slot()
+    def playPause(self):
+        self._set("playing", not self.s["playing"], "play-pause")
+
+    @Slot()
+    def next(self):
+        self._set("position", 0.0, "next")
+
+    @Slot()
+    def previous(self):
+        self._set("position", 0.0, "previous")
+
+    @Slot(float)
+    def seek(self, fraction):
+        pos = fraction * self.s["length"]
+        self._set("position", pos, "position", f"{pos / 1e6:.1f}")
+
+    @Slot(int)
+    def setVolume(self, value):
+        self._set("volume", value, "volume", f"{value / 100:.2f}")
+
+    @Slot()
+    def toggleShuffle(self):
+        self._set("shuffle", not self.s["shuffle"], "shuffle", "Toggle")
+
+    @Slot()
+    def cycleLoop(self):
+        nxt = {"None": "Playlist", "Playlist": "Track"}.get(self.s["loop"], "None")
+        self._set("loop", nxt, "loop", nxt)
 
 
-def palette() -> dict[str, str]:
+def theme() -> dict:
     try:
         wal = json.loads(WAL_COLORS.read_text())
         c = wal["colors"]
-        return {"bg": wal["special"]["background"], "fg": wal["special"]["foreground"],
-                "surface": c["color0"], "muted": c["color8"], "accent": c["color11"]}
+        colours = {"bg": wal["special"]["background"], "fg": wal["special"]["foreground"],
+                   "surface": c["color0"], "muted": c["color8"], "accent": c["color11"]}
     except (OSError, ValueError, KeyError):
-        return {"bg": "#2e3440", "fg": "#d8dee9", "surface": "#3b4252",
-                "muted": "#4c566a", "accent": "#ebcb8b"}
-
-
-def stylesheet(p: dict[str, str]) -> str:
-    r = "2px"
-    return f"""
-    * {{ font-family: "JetBrains Mono", monospace; font-size: 10pt; color: {p['fg']}; }}
-    QLabel#title {{ font-size: 14pt; font-weight: 700; }}
-    QLabel#sub, QLabel#time {{ color: {p['fg']}; }}
-    QLabel#art {{ border: 3px solid {p['muted']}; border-radius: {r}; background: {p['surface']}; }}
-    QPushButton {{ font-family: "Font Awesome 7 Free"; font-weight: 900; font-size: 13pt;
-                  background: transparent; border: 3px solid transparent; border-radius: {r};
-                  padding: 8px; min-width: 26px; }}
-    QPushButton:hover {{ border-color: {p['muted']}; }}
-    QPushButton#play {{ font-size: 16pt; border-color: {p['accent']}; color: {p['accent']};
-                       min-width: 40px; }}
-    QPushButton#play:hover {{ background: {p['accent']}; color: {p['bg']}; }}
-    QPushButton#toggle {{ color: {p['muted']}; }}
-    QPushButton#toggle:checked {{ color: {p['accent']}; border-bottom-color: {p['accent']}; }}
-    QLabel#icon {{ font-family: "Font Awesome 7 Free"; font-weight: 900; }}
-    QSlider::groove:horizontal {{ height: 6px; border-radius: {r}; background: {p['muted']}; }}
-    QSlider::sub-page:horizontal {{ border-radius: {r}; background: {p['accent']}; }}
-    QSlider::handle:horizontal {{ width: 12px; margin: -6px 0; border-radius: {r};
-                                 background: {p['fg']}; }}
-    """
-
-
-def blurred(pix: QPixmap, size: QSize, radius: int = 60) -> QPixmap:
-    """Blur a pixmap (scaled to cover `size`) for the window backdrop."""
-    src = pix.scaled(size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
-    scene = QGraphicsScene()
-    item = QGraphicsPixmapItem(src)
-    blur = QGraphicsBlurEffect()
-    blur.setBlurRadius(radius)
-    item.setGraphicsEffect(blur)
-    scene.addItem(item)
-    out = QImage(size, QImage.Format_ARGB32)
-    out.fill(Qt.transparent)
-    painter = QPainter(out)
-    scene.render(painter, QRectF(0, 0, size.width(), size.height()),
-                 QRectF(0, 0, src.width(), src.height()))
-    painter.end()
-    return QPixmap.fromImage(out)
-
-
-class Controller(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Now playing")
-        self.colors = palette()
-        self.backdrop: QPixmap | None = None
-        self.was_active = False
-        self.held: dict[str, float] = {}  # control -> time until polling may overwrite it
-        self.playing = False
-        self.loop_state = "None"
-        self.position = 0.0
-        self.art_url = ""
-        self.length = 0.0
-        self.net = QNetworkAccessManager(self)
-        self.net.finished.connect(self.art_loaded)
-
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(24, 24, 24, 20)
-        lay.setSpacing(10)
-
-        self.art = QLabel(objectName="art", alignment=Qt.AlignCenter)
-        self.art.setFixedSize(ART, ART)
-        self.art.setFont(QFont("Font Awesome 7 Free", 64, QFont.Black))
-        lay.addWidget(self.art, 0, Qt.AlignHCenter)
-        lay.addSpacing(6)
-
-        self.title = QLabel(objectName="title", wordWrap=True)
-        self.sub = QLabel(objectName="sub", wordWrap=True)
-        lay.addWidget(self.title)
-        lay.addWidget(self.sub)
-
-        self.progress = QSlider(Qt.Horizontal)
-        self.progress.setRange(0, 1000)
-        self.progress.sliderReleased.connect(self.seek)
-        self.elapsed = QLabel(objectName="time")
-        self.total = QLabel(objectName="time")
-        times = QHBoxLayout()
-        times.addWidget(self.elapsed)
-        times.addStretch(1)
-        times.addWidget(self.total)
-        lay.addWidget(self.progress)
-        lay.addLayout(times)
-
-        controls = QHBoxLayout()
-        controls.setSpacing(6)
-        self.shuffle = self.button("shuffle", self.toggle_shuffle, checkable=True, name="toggle")
-        self.prev = self.button("prev", lambda: self.skip("previous"))
-        self.play = self.button("play", self.toggle_play, name="play")
-        self.next = self.button("next", lambda: self.skip("next"))
-        self.loop = self.button("loop", self.cycle_loop, checkable=True, name="toggle")
-        controls.addStretch(1)
-        for b in (self.shuffle, self.prev, self.play, self.next, self.loop):
-            controls.addWidget(b)
-        controls.addStretch(1)
-        lay.addLayout(controls)
-
-        vol = QHBoxLayout()
-        icon = QLabel(ICON["volume"], objectName="icon")
-        self.volume = QSlider(Qt.Horizontal)
-        self.volume.setRange(0, 100)
-        self.volume.sliderMoved.connect(lambda v: playerctl_bg("volume", f"{v / 100:.2f}"))
-        vol.addWidget(icon)
-        vol.addWidget(self.volume, 1)
-        lay.addLayout(vol)
-
-        self.setFixedWidth(WIDTH)
-        self.timer = QTimer(self, interval=500, timeout=self.refresh)
-        self.timer.start()
-        self.refresh()
-
-    def button(self, icon: str, action, checkable=False, name="") -> QPushButton:
-        b = QPushButton(ICON[icon], objectName=name, checkable=checkable)
-        b.setCursor(Qt.PointingHandCursor)
-        b.setFocusPolicy(Qt.NoFocus)
-        b.clicked.connect(action)
-        return b
-
-    # Optimistic updates: change the UI now, tell the player in the background,
-    # and hold the control so the next poll doesn't flick it back.
-    def hold(self, *controls: str):
-        for c in controls:
-            self.held[c] = time.monotonic() + HOLD
-
-    def is_held(self, control: str) -> bool:
-        return self.held.get(control, 0) > time.monotonic()
-
-    def toggle_play(self):
-        self.playing = not self.playing
-        self.play.setText(ICON["pause"] if self.playing else ICON["play"])
-        self.hold("status")
-        playerctl_bg("play-pause")
-
-    def toggle_shuffle(self):
-        self.hold("shuffle")  # the checkable button has already flipped itself
-        playerctl_bg("shuffle", "Toggle")
-
-    def cycle_loop(self):
-        self.loop_state = {"None": "Playlist", "Playlist": "Track"}.get(self.loop_state, "None")
-        self.show_loop()
-        self.hold("loop")
-        playerctl_bg("loop", self.loop_state)
-
-    def show_loop(self):
-        self.loop.setChecked(self.loop_state in ("Playlist", "Track"))
-        self.loop.setToolTip(f"Repeat: {self.loop_state}")
-
-    def skip(self, direction: str):
-        self.show_position(0)
-        self.hold("position")
-        playerctl_bg(direction)
-
-    def seek(self):
-        if self.length:
-            self.position = self.progress.value() / 1000 * self.length
-            self.show_position(self.position)
-            self.hold("position")
-            playerctl_bg("position", f"{self.position / 1e6:.1f}")
-
-    def show_position(self, pos: float):
-        if not self.progress.isSliderDown():
-            self.progress.setValue(int(pos / self.length * 1000) if self.length else 0)
-        self.elapsed.setText(mmss(pos))
-
-    def refresh(self):
-        s = read_state()
-        if s is None:
-            self.title.setText("Nothing playing")
-            self.sub.setText("")
-            self.art.setText(ICON["music"])
-            return
-        self.title.setText(s["title"] or "Unknown title")
-        self.sub.setText(" — ".join(x for x in (s["artist"], s["album"]) if x))
-        supported = s["playerName"] not in NO_SHUFFLE_LOOP
-        self.shuffle.setVisible(supported)
-        self.loop.setVisible(supported)
-        if not self.is_held("status"):
-            self.playing = s["status"] == "Playing"
-            self.play.setText(ICON["pause"] if self.playing else ICON["play"])
-        if not self.is_held("shuffle"):
-            self.shuffle.setChecked(s["shuffle"] == "true")
-        if not self.is_held("loop"):
-            self.loop_state = s["loop"] or "None"
-            self.show_loop()
-
-        self.length = float(s["mpris:length"] or 0)
-        self.total.setText(mmss(self.length))
-        if not self.is_held("position"):
-            self.position = min(float(s["position"] or 0), self.length or float("inf"))
-            self.show_position(self.position)
-        if not self.volume.isSliderDown() and s["volume"]:
-            self.volume.setValue(round(float(s["volume"]) * 100))
-
-        url = s["mpris:artUrl"]
-        if url != self.art_url:
-            self.art_url = url
-            if url.startswith(("http://", "https://")):
-                self.net.get(QNetworkRequest(QUrl(url)))
-            elif url.startswith("file://"):
-                self.set_art(QPixmap(QUrl(url).toLocalFile()))
-            else:
-                self.set_art(QPixmap())
-
-    def art_loaded(self, reply):
-        if reply.url().toString() == self.art_url:
-            img = QImage()
-            img.loadFromData(reply.readAll())
-            self.set_art(QPixmap.fromImage(img))
-        reply.deleteLater()
-
-    def set_art(self, pix: QPixmap):
-        if pix.isNull():
-            self.art.setPixmap(QPixmap())
-            self.art.setText(ICON["music"])
-            self.backdrop = None
-        else:
-            inner = ART - 6  # inside the 3px border
-            self.art.setPixmap(pix.scaled(inner, inner, Qt.KeepAspectRatioByExpanding,
-                                          Qt.SmoothTransformation))
-            self.backdrop = blurred(pix, QSize(WIDTH, WIDTH * 2))
-        self.update()
-
-    def paintEvent(self, e):
-        p = QPainter(self)
-        p.fillRect(self.rect(), QColor(self.colors["bg"]))
-        if self.backdrop:
-            p.drawPixmap(self.rect(), self.backdrop)
-            shade = QColor(self.colors["bg"])
-            shade.setAlpha(190)  # keep text readable over bright covers
-            p.fillRect(self.rect(), shade)
-
-    def keyPressEvent(self, e):
-        key = e.key()
-        if key == Qt.Key_Escape:
-            self.close()
-        elif key == Qt.Key_Space:
-            self.play.click()
-        elif key == Qt.Key_Right:
-            self.next.click()
-        elif key == Qt.Key_Left:
-            self.prev.click()
-
-    def changeEvent(self, e):
-        # Behave like a popup: close when focus moves elsewhere. Only once it has
-        # actually had focus, since it reports inactive while still mapping.
-        if e.type() == e.Type.ActivationChange:
-            if self.isActiveWindow():
-                self.was_active = True
-            elif self.was_active:
-                QTimer.singleShot(150, lambda: None if self.isActiveWindow() else self.close())
-        super().changeEvent(e)
+        colours = {"bg": "#2e3440", "fg": "#d8dee9", "surface": "#3b4252", "muted": "#4c566a", "accent": "#ebcb8b"}
+    return colours | {"font": "JetBrains Mono"}
 
 
 def main():
-    app = QApplication(sys.argv)
-
-    # Already open? Ask it to close and exit, so the waybar click toggles the popup.
+    app = QGuiApplication(sys.argv)
     probe = QLocalSocket()
     probe.connectToServer(SOCKET)
-    if probe.waitForConnected(200):
+    if probe.waitForConnected(200):  # already open: close it (toggle)
         probe.write(b"quit")
         probe.waitForBytesWritten(200)
         return
-
-    QLocalServer.removeServer(SOCKET)  # clear a stale socket from a crash
+    QLocalServer.removeServer(SOCKET)
     server = QLocalServer()
     server.listen(SOCKET)
+    server.newConnection.connect(app.quit)
 
-    app.setDesktopFileName("media-controller")  # Wayland app_id, for the window rule
-    place_under_cursor()
-    w = Controller()
-    server.newConnection.connect(w.close)
-    app.setStyleSheet(stylesheet(w.colors))
-    w.show()
+    player = Player()
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("player", player)
+    engine.rootContext().setContextProperty("theme", theme())
+    engine.loadData(QByteArray(QML.encode()))
+    if not engine.rootObjects():
+        sys.exit("media-controller: QML failed to load")
     sys.exit(app.exec())
 
 
