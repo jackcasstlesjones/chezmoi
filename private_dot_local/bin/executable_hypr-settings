@@ -333,10 +333,11 @@ def device_picker(kind: str, parent: QWidget) -> QComboBox:
     combo.setFixedWidth(300)
     timer = QTimer(parent, singleShot=True, interval=400)
     timer.timeout.connect(lambda: set_audio_device(kind, combo.currentData()))
-    combo.currentIndexChanged.connect(timer.start)
+    combo.currentIndexChanged.connect(timer.start)  # h/l steps: switch after a pause
+    combo.activated.connect(lambda _: (timer.stop(), set_audio_device(kind, combo.currentData())))
 
     def refresh():
-        if combo.view().isVisible():  # don't rebuild under an open dropdown
+        if combo.view().isVisible() or timer.isActive():  # open list, or a switch is pending
             return
         devices, default = audio_devices(kind)
         combo.blockSignals(True)
@@ -837,10 +838,13 @@ class AppearancePage(RowNav, QWidget):
             combo.setFixedWidth(240)
             combo.setFocusPolicy(Qt.StrongFocus)
             combo.addItems(options())
-            # Apply after a short pause, so stepping through with h/l doesn't apply every step
+            # Picking with the mouse/Enter applies now; h/l steps apply after a pause
             timer = QTimer(self, singleShot=True, interval=500)
             timer.timeout.connect(lambda combo=combo, apply=apply: apply(combo.currentText()))
             combo.currentIndexChanged.connect(timer.start)
+            combo.activated.connect(lambda _, combo=combo, apply=apply, timer=timer:
+                                    (timer.stop(), apply(combo.currentText())))
+            combo.pending = timer
             self.combos.append((combo, current))
             lay.addWidget(row(labelled(title, hint), combo))
         lay.addStretch(1)
@@ -848,6 +852,8 @@ class AppearancePage(RowNav, QWidget):
 
     def refresh(self):
         for combo, current in self.combos:
+            if combo.pending.isActive():
+                continue  # a change is about to be applied; don't overwrite it
             combo.blockSignals(True)  # showing the current value isn't a change
             value = current()
             if combo.findText(value) < 0:
@@ -856,7 +862,8 @@ class AppearancePage(RowNav, QWidget):
             combo.blockSignals(False)
 
     def showEvent(self, e):
-        self.refresh()
+        if not e.spontaneous():  # switching to this page, not the window being re-shown
+            self.refresh()
 
 
 # --------------------------------------------------------------------------- battery
