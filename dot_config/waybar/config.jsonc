@@ -16,6 +16,7 @@
         "~/.config/waybar/modules/power-profiles.jsonc",
         "~/.config/waybar/modules/cpu-mem-temp.jsonc",
         "~/.config/waybar/modules/battery.jsonc",
+        "~/.config/waybar/modules/updates.jsonc",
         "~/.config/waybar/modules/supabase.jsonc",
         "~/.config/waybar/modules/tray.jsonc"
         // disabled
@@ -47,6 +48,7 @@
         "power-profiles-daemon",
         "group/system",
         "battery",
+        "custom/updates",
         "custom/supabase",
         "tray"
         // "idle_inhibitor",

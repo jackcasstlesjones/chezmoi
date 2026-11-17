@@ -49,3 +49,7 @@
 /* Bluetooth: icon only, struck through when off */
 #bluetooth.off,
 #bluetooth.disabled { text-decoration-line: line-through; }
+
+/* Updates: days since last full upgrade (Cyber Essentials: within 14 days) */
+#custom-updates.warning  { color: @warn; }
+#custom-updates.critical { background-color: @urgent; color: @bg; }
