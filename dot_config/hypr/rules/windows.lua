@@ -96,3 +96,14 @@ hl.window_rule({
     size   = "1100 720",
     center = true,
 })
+
+-- Now-playing popup from the waybar media module. The app re-sends this rule
+-- on launch with `monitor`/`move` set to drop it under the cursor (the module).
+hl.window_rule({
+    name      = "media-controller-float",
+    match     = { class = "^(media-controller)$" },
+    float     = true,
+    pin       = true,
+    animation = "slide top",
+    move      = "20 66",
+})

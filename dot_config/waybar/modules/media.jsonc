@@ -8,6 +8,8 @@
             "default": "🎜"
         },
         "escape": true,
-        "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null"
+        "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null",
+        // Opens the Qt now-playing popup; clicking again closes it (the app is single-instance)
+        "on-click": "~/.local/bin/media-controller"
     }
 }
