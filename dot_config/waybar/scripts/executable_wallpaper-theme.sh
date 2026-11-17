@@ -44,6 +44,7 @@ if [[ -n "$THEME" ]]; then
 else
     wal -i "$WALLPAPER_PATH" -n -q
 fi
+~/.config/scripts/wal-qt6ct.py  # Qt apps (qt6ct palette) follow pywal too
 
 # awww remembers the last image per monitor and restores it on daemon start.
 # Random pick from the more dramatic transitions (no plain fade/slide), at a random angle.
