@@ -1,0 +1,49 @@
+/* swayosd (volume/brightness OSD), matching Hyprland's look: 2px corners, 3px accent
+   border, accent bar. Colours from pywal (wal template colors-swayosd.css), so they
+   follow the wallpaper instead of the GTK theme. Relative to ~/.config/swayosd/. */
+@import url("../../.cache/wal/colors-swayosd.css");
+
+window#osd {
+  border-radius: 2px;
+  border: 3px solid @osd_accent;
+  background: @osd_bg;
+}
+window#osd #container {
+  margin: 16px;
+}
+window#osd image,
+window#osd label {
+  color: @osd_fg;
+  font-family: "JetBrains Mono";
+}
+window#osd progressbar:disabled,
+window#osd image:disabled {
+  opacity: 0.5;
+}
+window#osd progressbar,
+window#osd segmentedprogress {
+  min-height: 6px;
+  border-radius: 2px;
+  background: transparent;
+  border: none;
+}
+window#osd trough,
+window#osd segment {
+  min-height: inherit;
+  border-radius: inherit;
+  border: none;
+  background: @osd_muted;
+}
+window#osd progress,
+window#osd segment.active {
+  min-height: inherit;
+  border-radius: inherit;
+  border: none;
+  background: @osd_accent;
+}
+window#osd segment {
+  margin-left: 8px;
+}
+window#osd segment:first-child {
+  margin-left: 0;
+}

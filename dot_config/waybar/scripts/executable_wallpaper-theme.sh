@@ -43,6 +43,7 @@ else
 fi
 ~/.config/scripts/wal-qt6ct.py  # Qt apps (qt6ct palette) follow pywal too
 command -v pywalfox >/dev/null && pywalfox update  # Firefox (Pywalfox extension), live
+pkill -x swayosd-server && setsid -f swayosd-server >/dev/null 2>&1  # OSD reads its CSS at start
 
 # awww remembers the last image per monitor and restores it on daemon start.
 # Random pick from the more dramatic transitions (no plain fade/slide), at a random angle.
