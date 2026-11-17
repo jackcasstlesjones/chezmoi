@@ -10,8 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QRectF, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPen, QPixmap
+from PySide6.QtCore import QEvent, QObject, QRectF, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QSlider, QStackedWidget,
@@ -27,6 +27,8 @@ BINDS_DIR = HOME / ".config/hypr/binds"
 VARS_FILE = HOME / ".config/hypr/config/vars.lua"
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 THUMB = QSize(240, 135)
+VIM_ARROWS = {Qt.Key_H: Qt.Key_Left, Qt.Key_J: Qt.Key_Down,
+              Qt.Key_K: Qt.Key_Up, Qt.Key_L: Qt.Key_Right}
 COLORS: dict[str, str] = {}  # current palette, set by stylesheet()
 
 
@@ -67,6 +69,7 @@ def stylesheet() -> str:
                             margin-bottom: 10px; }}
     QListWidget#nav::item:selected {{ border-color: {accent}; color: {accent}; background: transparent; }}
     QListWidget#nav::item:hover:!selected {{ border-color: {muted}; }}
+    QListWidget#nav[focused="true"]::item:selected {{ background: {accent}; color: {bg}; }}
     QLabel#title {{ font-size: 16pt; font-weight: 700; color: {accent}; }}
     QLabel#hint {{ color: {muted}; }}
     QListWidget#walls {{ background: transparent; border: none; outline: none; }}
@@ -74,6 +77,7 @@ def stylesheet() -> str:
     QListWidget#walls::item:selected {{ border-color: {accent}; background: transparent; color: {accent}; }}
     QListWidget#walls::item:hover:!selected {{ border-color: {muted}; }}
     QWidget#row {{ background: {surface}; border: 3px solid {muted}; border-radius: {r}; }}
+    QWidget#row[focused="true"] {{ border-color: {accent}; }}
     QWidget#row QLabel {{ background: transparent; }}
     QCheckBox {{ background: transparent; }}
     QSlider {{ background: transparent; }}
@@ -93,7 +97,7 @@ def stylesheet() -> str:
     QSpinBox:focus {{ border-color: {accent}; }}
     QSpinBox::up-button, QSpinBox::down-button {{ width: 0; border: none; }}
     QPushButton {{ background: {bg}; border: 3px solid {muted}; border-radius: {r}; padding: 8px 18px; }}
-    QPushButton:hover {{ border-color: {accent}; color: {accent}; }}
+    QPushButton:hover, QPushButton:focus {{ border-color: {accent}; color: {accent}; }}
     QToolTip {{ background: {surface}; border: 3px solid {accent}; border-radius: {r}; }}
     """
 
@@ -128,7 +132,10 @@ class ThumbJob(QRunnable):
             img = img.scaled(THUMB, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
             x, y = (img.width() - THUMB.width()) // 2, (img.height() - THUMB.height()) // 2
             img = img.copy(x, y, THUMB.width(), THUMB.height())
-        self.signals.done.emit(self.path.name, img)
+        try:
+            self.signals.done.emit(self.path.name, img)
+        except RuntimeError:
+            pass  # window closed before this thumbnail finished
 
 
 class LookPage(QWidget):
@@ -150,6 +157,7 @@ class LookPage(QWidget):
         self.walls.setSpacing(5)
         self.walls.setUniformItemSizes(True)
         self.walls.itemClicked.connect(self.apply)
+        self.walls.itemActivated.connect(self.apply)  # Enter
         lay.addWidget(self.walls, 1)
         lay.addWidget(self.status)
 
@@ -159,13 +167,28 @@ class LookPage(QWidget):
         blank = QPixmap(THUMB)
         blank.fill(Qt.transparent)
         for path in sorted(p for p in WALLPAPER_DIR.iterdir() if p.suffix.lower() in IMAGE_EXTS):
-            item = QListWidgetItem(QIcon(blank), path.stem)
+            item = QListWidgetItem(QIcon(blank), "")
+            item.setToolTip(path.stem)
+            item.setSizeHint(THUMB + QSize(14, 14))  # thumbnail + padding/border, no caption row
             item.setData(Qt.UserRole, path.name)
             self.walls.addItem(item)
             self.items[path.name] = item
             QThreadPool.globalInstance().start(ThumbJob(path, self.signals))
         self.mark_current()
         self.proc = None
+
+    def nav(self, e: QKeyEvent) -> bool:
+        arrow = VIM_ARROWS.get(e.key())
+        if arrow:
+            QApplication.sendEvent(self.walls, QKeyEvent(QEvent.KeyPress, arrow, Qt.NoModifier))
+            return True
+        if e.key() == Qt.Key_Space and self.walls.currentItem():
+            self.apply(self.walls.currentItem())
+            return True
+        return False
+
+    def focus_first(self):
+        self.walls.setFocus()
 
     def set_thumb(self, name: str, img: QImage):
         if not img.isNull():
@@ -258,6 +281,7 @@ class Switch(QCheckBox):
         super().__init__()
         self.setFixedSize(52, 26)
         self.setCursor(Qt.PointingHandCursor)
+        self.setFocusPolicy(Qt.StrongFocus)
 
     def hitButton(self, pos):
         return self.rect().contains(pos)
@@ -289,7 +313,43 @@ def row(*widgets, stretch_at: int = 0) -> QWidget:
     return r
 
 
-class TogglesPage(QWidget):
+class RowNav:
+    """Keyboard handling for pages made of rows: j/k between controls, h/l adjust
+    sliders and minute boxes, Space/Enter flips switches and presses buttons."""
+
+    controls: list[QWidget]
+
+    def nav(self, e: QKeyEvent) -> bool:
+        key = e.key()
+        fw = QApplication.focusWidget()
+        i = self.controls.index(fw) if fw in self.controls else -1
+        if key in (Qt.Key_J, Qt.Key_Down):
+            self.controls[min(i + 1, len(self.controls) - 1)].setFocus()
+            return True
+        if key in (Qt.Key_K, Qt.Key_Up):
+            self.controls[max(i - 1, 0)].setFocus()
+            return True
+        if i < 0:
+            return False
+        w = self.controls[i]
+        step = {Qt.Key_H: -1, Qt.Key_Left: -1, Qt.Key_L: 1, Qt.Key_Right: 1}.get(key)
+        if step and isinstance(w, QSlider):
+            w.setValue(w.value() + 5 * step)
+            return True
+        if step and isinstance(w, QSpinBox):
+            w.stepBy(step)
+            return True
+        if key in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter) and isinstance(w, (QCheckBox, QPushButton)):
+            w.click()
+            return True
+        return False
+
+    def focus_first(self):
+        if QApplication.focusWidget() not in self.controls:
+            self.controls[0].setFocus()
+
+
+class TogglesPage(RowNav, QWidget):
     def __init__(self):
         super().__init__()
         w, lay = page("Quick toggles")
@@ -313,12 +373,14 @@ class TogglesPage(QWidget):
             value.setFixedWidth(44)
             s = QSlider(Qt.Horizontal)
             s.setRange(lo, hi)
+            s.setFocusPolicy(Qt.StrongFocus)
             s.valueChanged.connect(lambda v, value=value: value.setText(f"{v}%"))
             s.sliderMoved.connect(write)
             s.valueChanged.connect(lambda v, s=s, write=write: None if s.isSliderDown() else write(v))
             self.sliders.append((read, s, value))
             lay.addWidget(row(label, s, value, stretch_at=1))
         lay.addStretch(1)
+        self.controls = [box for _, box in self.boxes] + [s for _, s, _ in self.sliders]
 
         self.timer = QTimer(self, interval=3000, timeout=self.refresh)
 
@@ -343,7 +405,7 @@ class TogglesPage(QWidget):
 
 # --------------------------------------------------------------------------- lock & idle
 
-class LockPage(QWidget):
+class LockPage(RowNav, QWidget):
     def __init__(self):
         super().__init__()
         w, lay = page("Lock & idle", "hypridle timeouts; saved to ~/.config/hypr/hypridle.conf")
@@ -370,6 +432,7 @@ class LockPage(QWidget):
         lock_now.clicked.connect(lambda: spawn("loginctl", "lock-session"))
         lay.addWidget(lock_now, 0, Qt.AlignLeft)
         lay.addStretch(1)
+        self.controls = [self.idle, *self.spins.values(), lock_now]
 
     def refresh(self):
         self.idle.setChecked(IDLE_TOGGLE.read())
@@ -605,7 +668,8 @@ class KeycapDelegate(QStyledItemDelegate):
 class KeybindsPage(QWidget):
     def __init__(self):
         super().__init__()
-        w, lay = page("Keybinds", "Hover an action to see the command behind it.")
+        self.setFocusPolicy(Qt.StrongFocus)  # holds focus for j/k so they don't type into search
+        w, lay = page("Keybinds", "/ to search, j/k to scroll. Hover an action to see its command.")
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(w)
@@ -666,8 +730,26 @@ class KeybindsPage(QWidget):
         for h in {h for _, h, _ in self.rows}:
             self.table.setRowHidden(h, h not in visible_headers)
 
-    def showEvent(self, e):
-        self.search.setFocus()
+    def nav(self, e: QKeyEvent) -> bool:
+        sb = self.table.verticalScrollBar()
+        key, text = e.key(), e.text()
+        if key in (Qt.Key_J, Qt.Key_Down):
+            sb.setValue(sb.value() + sb.singleStep())
+        elif key in (Qt.Key_K, Qt.Key_Up):
+            sb.setValue(sb.value() - sb.singleStep())
+        elif text == "g":
+            sb.setValue(sb.minimum())
+        elif text == "G":
+            sb.setValue(sb.maximum())
+        elif text == "/":
+            self.search.setFocus()
+            self.search.selectAll()
+        else:
+            return False
+        return True
+
+    def focus_first(self):
+        self.setFocus()
 
 
 # --------------------------------------------------------------------------- window
@@ -694,17 +776,77 @@ class Settings(QMainWindow):
             self.nav.addItem(name)
             self.stack.addWidget(widget)
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
+        self.nav.currentRowChanged.connect(
+            lambda: QTimer.singleShot(0, lambda: None if self.nav.hasFocus() else self.focus_page()))
         self.nav.setCurrentRow(PAGES.index(page) if page in PAGES else 0)
 
         lay.addWidget(self.nav)
         lay.addWidget(self.stack, 1)
         self.setCentralWidget(root)
 
-    def keyPressEvent(self, e):
-        if e.key() == Qt.Key_Escape:
-            self.close()
+    def step_page(self, delta: int):
+        self.nav.setCurrentRow((self.nav.currentRow() + delta) % self.nav.count())
+
+    def focus_page(self):
+        page = self.stack.currentWidget()
+        getattr(page, "focus_first", page.setFocus)()
+
+
+class KeyNav(QObject):
+    """App-wide keys: Tab/Shift+Tab or Ctrl+J/K switch pages, Ctrl+H/L move between the
+    sidebar and the page, Esc closes (or leaves the search box), and anything else goes
+    to the sidebar or the current page's nav() for vim keys."""
+
+    def __init__(self, win: Settings):
+        super().__init__(win)
+        self.win = win
+
+    def eventFilter(self, obj, e):
+        # Widgets only: the same key also reaches the QWindow first
+        if e.type() != QEvent.KeyPress or not isinstance(obj, QWidget):
+            return False
+        key = e.key()
+        if e.modifiers() == Qt.ControlModifier and key in (Qt.Key_H, Qt.Key_J, Qt.Key_K, Qt.Key_L):
+            if key == Qt.Key_H:
+                self.win.nav.setFocus()
+            elif key == Qt.Key_L:
+                self.win.focus_page()
+            else:
+                self.win.step_page(1 if key == Qt.Key_J else -1)
+            return True
+        if self.win.nav.hasFocus():
+            if key in (Qt.Key_J, Qt.Key_Down, Qt.Key_K, Qt.Key_Up):
+                self.win.step_page(1 if key in (Qt.Key_J, Qt.Key_Down) else -1)
+                return True
+            if key in (Qt.Key_L, Qt.Key_Right, Qt.Key_Return, Qt.Key_Enter):
+                self.win.focus_page()
+                return True
+        if isinstance(QApplication.focusWidget(), QLineEdit):
+            if key == Qt.Key_Escape:
+                self.win.focus_page()
+                return True
+            if key not in (Qt.Key_Tab, Qt.Key_Backtab):
+                return False  # typing in the search box
+        if key == Qt.Key_Escape:
+            self.win.close()
+        elif key == Qt.Key_Tab:
+            self.win.step_page(1)
+        elif key == Qt.Key_Backtab:
+            self.win.step_page(-1)
         else:
-            super().keyPressEvent(e)
+            page = self.win.stack.currentWidget()
+            return bool(getattr(page, "nav", None) and page.nav(e))
+        return True
+
+
+def mark_focused_row(old: QWidget | None, new: QWidget | None):
+    """Give the row holding the focused control (or the focused sidebar) an accent highlight."""
+    for w, on in ((old, False), (new, True)):
+        r = w if w is not None and w.objectName() == "nav" else (w.parentWidget() if w else None)
+        if r is not None and r.objectName() in ("row", "nav"):
+            r.setProperty("focused", on)
+            r.style().unpolish(r)
+            r.style().polish(r)
 
 
 def main():
@@ -712,6 +854,8 @@ def main():
     app.setDesktopFileName("hypr-settings")  # Wayland app_id, for the window rule
     app.setStyleSheet(stylesheet())
     win = Settings(sys.argv[1] if len(sys.argv) > 1 else "look")
+    app.installEventFilter(KeyNav(win))
+    app.focusChanged.connect(mark_focused_row)
     win.resize(1100, 720)
     win.show()
     sys.exit(app.exec())
