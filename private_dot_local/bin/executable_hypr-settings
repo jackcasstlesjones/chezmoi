@@ -15,7 +15,7 @@ from PySide6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPainter, QPen, QPix
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QSlider, QStackedWidget,
-    QPushButton, QSpinBox, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QComboBox, QPushButton, QSpinBox, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 HOME = Path.home()
@@ -94,6 +94,11 @@ def stylesheet() -> str:
     QScrollBar::handle:vertical {{ background: {muted}; border-radius: {r}; min-height: 30px; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
     QSpinBox {{ background: {bg}; border: 3px solid {muted}; border-radius: {r}; padding: 4px 8px; }}
+    QComboBox {{ background: {bg}; border: 3px solid {muted}; border-radius: {r}; padding: 4px 8px; }}
+    QComboBox:focus, QComboBox:on {{ border-color: {accent}; }}
+    QComboBox::drop-down {{ border: none; width: 20px; }}
+    QComboBox QAbstractItemView {{ background: {bg}; border: 3px solid {accent}; outline: none;
+                                  selection-background-color: {surface}; selection-color: {accent}; }}
     QSpinBox:focus {{ border-color: {accent}; }}
     QSpinBox::up-button, QSpinBox::down-button {{ width: 0; border: none; }}
     QPushButton {{ background: {bg}; border: 3px solid {muted}; border-radius: {r}; padding: 8px 18px; }}
@@ -339,6 +344,12 @@ class RowNav:
         if step and isinstance(w, QSpinBox):
             w.stepBy(step)
             return True
+        if step and isinstance(w, QComboBox):
+            w.setCurrentIndex(max(0, min(w.count() - 1, w.currentIndex() + step)))
+            return True
+        if key in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter) and isinstance(w, QComboBox):
+            w.showPopup()
+            return True
         if key in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter) and isinstance(w, (QCheckBox, QPushButton)):
             w.click()
             return True
@@ -441,6 +452,121 @@ class LockPage(RowNav, QWidget):
             spin.blockSignals(True)
             spin.setValue(int(seconds) // 60)
             spin.blockSignals(False)
+
+    def showEvent(self, e):
+        self.refresh()
+
+
+# --------------------------------------------------------------------------- appearance
+
+GTK_INI = [HOME / ".config/gtk-3.0/settings.ini", HOME / ".config/gtk-4.0/settings.ini"]
+THEME_DIRS = [Path("/usr/share/themes"), HOME / ".themes", HOME / ".local/share/themes"]
+ICON_DIRS = [Path("/usr/share/icons"), HOME / ".icons", HOME / ".local/share/icons"]
+COLOR_SCHEMES = {"Prefer dark": "prefer-dark", "Default": "default", "Prefer light": "prefer-light"}
+
+
+def find_themes(dirs: list[Path], test) -> list[str]:
+    names = {d.name for base in dirs if base.is_dir() for d in base.iterdir() if d.is_dir() and test(d)}
+    return sorted(names, key=str.lower)
+
+
+def gtk_themes() -> list[str]:
+    return find_themes(THEME_DIRS, lambda d: (d / "gtk-3.0/gtk.css").exists())
+
+
+def icon_themes() -> list[str]:
+    def is_icons(d: Path) -> bool:
+        try:
+            return d.name not in ("hicolor", "locolor") and "\nDirectories" in (d / "index.theme").read_text()
+        except OSError:
+            return False
+    return find_themes(ICON_DIRS, is_icons)
+
+
+def cursor_themes() -> list[str]:
+    return find_themes(ICON_DIRS, lambda d: (d / "cursors").is_dir())
+
+
+def gsettings_get(key: str) -> str:
+    return run("gsettings", "get", "org.gnome.desktop.interface", key).strip().strip("'")
+
+
+def set_interface(key: str, value: str, ini_key: str, ini_value: str):
+    """What nwg-look does: gsettings for GTK4/portal apps, settings.ini for GTK3."""
+    run("gsettings", "set", "org.gnome.desktop.interface", key, value)
+    for ini in GTK_INI:
+        try:
+            text = ini.read_text()
+        except OSError:
+            continue
+        line = f"{ini_key}={ini_value}"
+        if re.search(rf"^{ini_key}=.*$", text, re.M):
+            text = re.sub(rf"^{ini_key}=.*$", line, text, flags=re.M)
+        else:
+            text = text.replace("[Settings]\n", f"[Settings]\n{line}\n", 1)
+        ini.write_text(text)
+
+
+def apply_icons(name: str):
+    set_interface("icon-theme", name, "gtk-icon-theme-name", name)
+    # Tray icons are drawn by the apps; restart nm-applet (if running) so it picks up the theme
+    if run("pgrep", "-x", "nm-applet"):
+        run("pkill", "-x", "nm-applet")
+        spawn("nm-applet")
+
+
+def apply_cursor(name: str):
+    set_interface("cursor-theme", name, "gtk-cursor-theme-name", name)
+    size = gsettings_get("cursor-size") or "24"
+    run("hyprctl", "setcursor", name, size)  # Hyprland's own cursor, right now
+
+
+APPEARANCE = [
+    # (title, hint, options(), current(), apply(value))
+    ("GTK theme", "Widgets in GTK apps", gtk_themes, lambda: gsettings_get("gtk-theme"),
+     lambda v: set_interface("gtk-theme", v, "gtk-theme-name", v)),
+    ("Icon theme", "App and tray icons; dark themes have light icons", icon_themes,
+     lambda: gsettings_get("icon-theme"), apply_icons),
+    ("Cursor", "Pointer theme for Hyprland and apps", cursor_themes,
+     lambda: gsettings_get("cursor-theme"), apply_cursor),
+    ("Colour scheme", "What apps that support it should prefer", lambda: list(COLOR_SCHEMES),
+     lambda: next((k for k, v in COLOR_SCHEMES.items() if v == gsettings_get("color-scheme")), "Default"),
+     lambda v: set_interface("color-scheme", COLOR_SCHEMES[v], "gtk-application-prefer-dark-theme",
+                             "1" if COLOR_SCHEMES[v] == "prefer-dark" else "0")),
+]
+
+
+class AppearancePage(RowNav, QWidget):
+    def __init__(self):
+        super().__init__()
+        w, lay = page("Appearance", "GTK theme, icons and cursor. Changes apply straight away.")
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(w)
+
+        self.combos = []
+        for title, hint, options, current, apply in APPEARANCE:
+            combo = QComboBox()
+            combo.setFixedWidth(240)
+            combo.setFocusPolicy(Qt.StrongFocus)
+            combo.addItems(options())
+            # Apply after a short pause, so stepping through with h/l doesn't apply every step
+            timer = QTimer(self, singleShot=True, interval=500)
+            timer.timeout.connect(lambda combo=combo, apply=apply: apply(combo.currentText()))
+            combo.currentIndexChanged.connect(timer.start)
+            self.combos.append((combo, current))
+            lay.addWidget(row(labelled(title, hint), combo))
+        lay.addStretch(1)
+        self.controls = [c for c, _ in self.combos]
+
+    def refresh(self):
+        for combo, current in self.combos:
+            combo.blockSignals(True)  # showing the current value isn't a change
+            value = current()
+            if combo.findText(value) < 0:
+                combo.addItem(value)
+            combo.setCurrentText(value)
+            combo.blockSignals(False)
 
     def showEvent(self, e):
         self.refresh()
@@ -754,7 +880,7 @@ class KeybindsPage(QWidget):
 
 # --------------------------------------------------------------------------- window
 
-PAGES = ["look", "toggles", "lock", "keybinds"]  # `hypr-settings <page>` opens on that page
+PAGES = ["look", "appearance", "toggles", "lock", "keybinds"]  # `hypr-settings <page>` opens on that page
 
 
 class Settings(QMainWindow):
@@ -771,7 +897,7 @@ class Settings(QMainWindow):
         self.stack = QStackedWidget()
         look = LookPage()
         look.applied.connect(lambda: QApplication.instance().setStyleSheet(stylesheet()))
-        for name, widget in (("  Look", look), ("  Toggles", TogglesPage()),
+        for name, widget in (("  Look", look), ("  Appearance", AppearancePage()), ("  Toggles", TogglesPage()),
                              ("  Lock & idle", LockPage()), ("  Keybinds", KeybindsPage())):
             self.nav.addItem(name)
             self.stack.addWidget(widget)
