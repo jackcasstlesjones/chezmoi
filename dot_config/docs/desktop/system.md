@@ -1,0 +1,7 @@
+# System notes
+Hyprland 0.57 (Lua config): wtype keys inherit physically-held mods -> use hl.dsp.send_shortcut. Chars not on keymap: custom xkb ~/.config/xkb/symbols/us_gbp (us + £ on <I230>), kb_layout us_gbp, send_shortcut key "sterling". Legacy `hyprctl dispatch exec`/`keyword` broken; use `hyprctl dispatch 'hl.dsp...'` / `hyprctl eval`. Rules re-definable by name via eval. No per-window animation speed (rule: style or no_anim only). Pinning: IgnorePkg hyprland+deps suggested, not done.
+Waybar: modules in waybar/modules/*.jsonc; removed claude-usage, hypridle, hostname, theme-toggle. bluetooth icon-only, line-through when off/disabled. cpu+memory+temperature = group/system pill w/ 1px @subtle dividers; temp critical = red bold text. Tray icons follow GTK icon theme; passive items dimmed via CSS.
+Battery: scripts/battery-log.sh via systemd user battery-log.timer (5 min) -> ~/.local/state/battery/battery.log, keep ~2100 lines, rate from last 30 lines. Alias `bat`.
+Unmanaged machine state touched: ~/.config/qt6ct/qt6ct.conf, gtk-3.0/4.0 settings.ini, gsettings, ~/.config/hypr/hypridle.conf, ~/.local/state/{battery,hypr}. Removed: nwg-displays (pkg+config), hypr monitors.conf/workspaces.conf(+bak). Left: ~/.config/hypr/monitors.sh (dead, legacy keyword), hyprland.conf.bak*.
+Defaults oddities: application/zip -> kindlecomicconverter.desktop; pdf/png -> firefox.
+Testing: never test dispatchers that blank/lock the live session; screenshots of real windows steal focus (use offscreen render or grim + kill).
