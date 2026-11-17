@@ -25,7 +25,7 @@ case "$CHOICE" in
         ~/.config/waybar/scripts/wallpaper-theme.sh
         ;;
     "🔒 Lock")
-        hyprlock
+        ~/.config/scripts/lock.sh
         ;;
     "🚪 Logout")
         hyprctl dispatch 'hl.dsp.exit()'

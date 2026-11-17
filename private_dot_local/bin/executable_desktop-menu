@@ -33,7 +33,7 @@ ITEMS = [
     None,
     # Short wait so the menu has closed before the screen is frozen for selection
     ("\uf125", "Screenshot", ["sh", "-c", "sleep 0.2; hyprshot -m region --freeze --clipboard-only"]),
-    ("\uf023", "Lock screen", ["loginctl", "lock-session"]),
+    ("\uf023", "Lock screen", [str(HOME / ".config/scripts/lock.sh")]),
     ("\uf011", "Power menu", ["wlogout"]),
 ]
 

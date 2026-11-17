@@ -4,12 +4,14 @@
 #   pick:         run the picker in the current terminal
 #   preview FILE: draw FILE in fzf's preview pane
 #   apply FILE:   set FILE (name in the wallpaper dir) without the picker
+#   lock FILE:    use FILE for the next lock screen (see ~/.config/scripts/lock.sh)
 
 WALLPAPER_DIR="$HOME/.config/wallpapers"
 
 case "${1:-}" in
     pick) ;;
     apply) SELECTED=$(basename "$2") ;;
+    lock) exec ~/.config/scripts/lock.sh prepare "$2" ;;
     preview)
         # sed: fzf's documented fix so icat's trailing line doesn't scroll the pane
         kitten icat --clear --transfer-mode=memory --unicode-placeholder --stdin=no \
