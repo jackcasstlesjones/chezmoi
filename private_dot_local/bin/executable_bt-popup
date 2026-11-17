@@ -1,0 +1,255 @@
+#!/usr/bin/env python3
+"""Bluetooth popup for the waybar bluetooth module: paired devices, connect/disconnect,
+and a button to open Settings → Bluetooth (pairing, forgetting, scanning live there).
+
+A layer-shell surface like audio-popup: a transparent full-screen layer behind it closes
+it on any outside click; launching again closes it. Keys: j/k move, Enter/Space choose,
+Esc close. Device data comes from hypr-settings (BlueZ over D-Bus).
+"""
+
+import json
+import os
+import subprocess
+import sys
+from importlib.machinery import SourceFileLoader
+from pathlib import Path
+
+os.environ["QT_WAYLAND_SHELL_INTEGRATION"] = "layer-shell"  # before Qt starts
+
+hs = SourceFileLoader("hypr_settings", str(Path.home() / ".local/bin/hypr-settings")).load_module()
+
+from PySide6.QtCore import Property, QByteArray, QObject, Signal, Slot  # noqa: E402
+from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
+from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+
+SOCKET = "bt-popup"
+
+QML = r"""
+import QtQuick
+import QtQuick.Window
+import org.kde.layershell 1.0 as LayerShell
+
+QtObject {
+    property var catcher: Window {
+        visible: true
+        color: "transparent"
+        LayerShell.Window.scope: "bt-popup-catcher"
+        LayerShell.Window.layer: LayerShell.Window.LayerTop
+        LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorBottom
+                                   | LayerShell.Window.AnchorLeft | LayerShell.Window.AnchorRight
+        LayerShell.Window.exclusionZone: -1
+        LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityNone
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onPressed: Qt.quit() }
+    }
+
+    property var popup: Window {
+        id: win
+        width: 420
+        height: content.implicitHeight + 32
+        visible: true
+        color: theme.bg
+        LayerShell.Window.scope: "bt-popup"
+        LayerShell.Window.layer: LayerShell.Window.LayerOverlay
+        LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorRight
+        LayerShell.Window.margins.top: 10   // below waybar's reserved area
+        LayerShell.Window.margins.right: 20
+        LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityExclusive
+
+        property int count: bt.devices.length
+        property int sel: 0  // keyboard cursor; index == count is the settings button
+
+        function activate(i) {
+            if (!bt.powered && i === 0) bt.powerOn()
+            else if (i < count) bt.toggle(bt.devices[i].mac)
+            else bt.openSettings()
+        }
+
+        Item {
+            anchors.fill: parent; focus: true
+            Keys.onPressed: (e) => {
+                const last = bt.powered ? win.count : 1
+                if (e.key === Qt.Key_Escape) Qt.quit()
+                else if (e.key === Qt.Key_J || e.key === Qt.Key_Down) win.sel = Math.min(win.sel + 1, last)
+                else if (e.key === Qt.Key_K || e.key === Qt.Key_Up) win.sel = Math.max(win.sel - 1, 0)
+                else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space)
+                    bt.powered ? win.activate(win.sel) : (win.sel === 0 ? bt.powerOn() : bt.openSettings())
+                else return
+                e.accepted = true
+            }
+        }
+
+        Rectangle { anchors.fill: parent; color: "transparent"; border.color: theme.accent; border.width: 3; radius: 2; z: 10 }
+
+        component Row_: Rectangle {
+            property int navIndex
+            property string glyph
+            property string title
+            property string detail
+            property bool on: false
+            signal clicked
+            width: parent.width; height: 48; radius: 2
+            color: on ? theme.surface : "transparent"
+            border.width: 3
+            border.color: win.sel === navIndex ? theme.accent : "transparent"
+            Text {
+                id: icon; x: 14; anchors.verticalCenter: parent.verticalCenter; width: 24
+                horizontalAlignment: Text.AlignHCenter; text: glyph
+                font.family: "Font Awesome 7 Free"; font.weight: Font.Black; font.pixelSize: 16
+                color: on ? theme.accent : theme.fg
+            }
+            Column {
+                anchors.left: icon.right; anchors.leftMargin: 14; anchors.right: parent.right; anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter; spacing: 2
+                Text { width: parent.width; text: title; elide: Text.ElideRight; color: on ? theme.accent : theme.fg
+                       font.family: theme.font; font.pixelSize: 14; font.bold: on }
+                Text { width: parent.width; text: detail; visible: detail !== ""; color: theme.fg; opacity: 0.7
+                       font.family: theme.font; font.pixelSize: 11 }
+            }
+            MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onEntered: win.sel = navIndex; onClicked: parent.clicked() }
+        }
+
+        Column {
+            id: content
+            x: 16; y: 16; width: win.width - 32
+            spacing: 6
+
+            Text { text: "BLUETOOTH"; leftPadding: 4; color: theme.muted; font.family: theme.font; font.pixelSize: 12; font.bold: true }
+
+            // Adapter off: offer to turn it on instead of a dead list
+            Row_ {
+                visible: !bt.powered; navIndex: 0; glyph: ""
+                title: "Bluetooth is off"; detail: "Turn on"
+                onClicked: bt.powerOn()
+            }
+            Repeater {
+                model: bt.powered ? bt.devices : []
+                Row_ {
+                    required property var modelData
+                    required property int index
+                    navIndex: index
+                    glyph: modelData.glyph
+                    title: modelData.name
+                    detail: modelData.detail
+                    on: modelData.connected
+                    onClicked: bt.toggle(modelData.mac)
+                }
+            }
+            Text {
+                visible: bt.powered && win.count === 0; leftPadding: 4
+                text: "No paired devices"; color: theme.muted; font.family: theme.font; font.pixelSize: 13
+            }
+            Item { width: 1; height: 4 }
+            Row_ {
+                navIndex: bt.powered ? win.count : 1; glyph: ""
+                title: "Bluetooth settings"; detail: "Pair, forget and scan for devices"
+                onClicked: bt.openSettings()
+            }
+        }
+
+        Timer { interval: 2000; running: true; repeat: true; onTriggered: bt.refresh() }
+    }
+}
+"""
+
+
+class Bluetooth(QObject):
+    changed = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self._devices: list[dict] = []
+        self._powered = False
+        self.busy: dict[str, tuple[str, subprocess.Popen]] = {}  # mac -> (action, process)
+        self.refresh()
+
+    devices = Property("QVariantList", lambda self: self._devices, notify=changed)
+    powered = Property(bool, lambda self: self._powered, notify=changed)
+
+    @Slot()
+    def refresh(self):
+        for mac, (_, proc) in list(self.busy.items()):
+            if proc.poll() is not None:
+                del self.busy[mac]
+        adapter, devices = hs.bt_state()
+        self._powered = bool(adapter.get("powered"))
+        paired = [d for d in devices if d["paired"]]
+        names = [d["name"] for d in paired]
+        busy_text = {"connect": "Connecting…", "disconnect": "Disconnecting…"}
+        self._devices = []
+        for d in paired:
+            parts = [busy_text[self.busy[d["mac"]][0]] if d["mac"] in self.busy
+                     else "Connected" if d["connected"] else "Not connected"]
+            if d["battery"] is not None:
+                parts.append(f"{d['battery']}%")
+            if names.count(d["name"]) > 1:
+                parts.append(f"…{d['mac'][-5:]}")  # same name, several entries
+            self._devices.append({"mac": d["mac"], "name": d["name"], "connected": d["connected"],
+                                  "glyph": hs.BT_ICONS.get(d["icon"], hs.BT_DEFAULT_ICON),
+                                  "detail": " · ".join(parts)})
+        self.changed.emit()
+
+    @Slot(str)
+    def toggle(self, mac):
+        if mac in self.busy:
+            return
+        dev = next((d for d in self._devices if d["mac"] == mac), None)
+        if dev is None:
+            return
+        action = "disconnect" if dev["connected"] else "connect"
+        proc = subprocess.Popen(["bluetoothctl", action, mac],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.busy[mac] = (action, proc)
+        self.refresh()
+
+    @Slot()
+    def powerOn(self):
+        hs.run("bluetoothctl", "power", "on")
+        self.refresh()
+
+    @Slot()
+    def openSettings(self):
+        # Without our layer-shell env var, or Settings would open as a full-screen layer too
+        env = {k: v for k, v in os.environ.items() if k != "QT_WAYLAND_SHELL_INTEGRATION"}
+        subprocess.Popen([str(Path.home() / ".local/bin/hypr-settings"), "bluetooth"], env=env,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        QGuiApplication.quit()
+
+
+def theme() -> dict:
+    try:
+        wal = json.loads(hs.WAL_COLORS.read_text())
+        c = wal["colors"]
+        colours = {"bg": wal["special"]["background"], "fg": wal["special"]["foreground"],
+                   "surface": c["color0"], "muted": c["color8"], "accent": c["color11"]}
+    except (OSError, ValueError, KeyError):
+        colours = {"bg": "#2e3440", "fg": "#d8dee9", "surface": "#3b4252", "muted": "#4c566a", "accent": "#ebcb8b"}
+    return colours | {"font": "JetBrains Mono"}
+
+
+def main():
+    app = QGuiApplication(sys.argv)
+    probe = QLocalSocket()
+    probe.connectToServer(SOCKET)
+    if probe.waitForConnected(200):  # already open: close it (toggle)
+        probe.write(b"quit")
+        probe.waitForBytesWritten(200)
+        return
+    QLocalServer.removeServer(SOCKET)
+    server = QLocalServer()
+    server.listen(SOCKET)
+    server.newConnection.connect(app.quit)
+
+    bt = Bluetooth()
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("bt", bt)
+    engine.rootContext().setContextProperty("theme", theme())
+    engine.loadData(QByteArray(QML.encode()))
+    if not engine.rootObjects():
+        sys.exit("bt-popup: QML failed to load")
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
