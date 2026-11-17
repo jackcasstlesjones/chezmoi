@@ -158,7 +158,7 @@ class LookPage(QWidget):
 
     def __init__(self):
         super().__init__()
-        w, lay = page("Look", "Pick where a wallpaper goes (t to switch), then click one.")
+        w, lay = page("Look", "Pick where a wallpaper goes (t to switch, s shuffles the lock screen), then click one.")
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(w)
@@ -176,6 +176,14 @@ class LookPage(QWidget):
         targets.addStretch(1)
         self.lock_label = QLabel(objectName="hint")
         targets.addWidget(self.lock_label)
+        targets.addSpacing(10)
+        # Shuffle: a random lock wallpaper (and its colours) after every unlock; `s` toggles
+        self.shuffle = Switch()
+        self.shuffle.setFocusPolicy(Qt.NoFocus)  # keyboard focus stays on the grid
+        self.shuffle.setChecked(LOCK_SHUFFLE.exists())
+        self.shuffle.clicked.connect(self.set_shuffle)
+        targets.addWidget(QLabel("Shuffle lock"))
+        targets.addWidget(self.shuffle)
         lay.addLayout(targets)
 
         self.status = QLabel("", objectName="hint")
@@ -216,6 +224,10 @@ class LookPage(QWidget):
         if e.key() == Qt.Key_Space and self.walls.currentItem():
             self.apply(self.walls.currentItem())
             return True
+        if e.text() == "s":
+            self.shuffle.setChecked(not self.shuffle.isChecked())
+            self.set_shuffle(self.shuffle.isChecked())
+            return True
         if e.text() == "t":
             order = [t for _, t in self.target_buttons]
             self.set_target(order[(order.index(self.target) + 1) % len(order)])
@@ -239,9 +251,21 @@ class LookPage(QWidget):
         except OSError:
             return ""
 
+    def set_shuffle(self, on: bool):
+        if on:
+            LOCK_SHUFFLE.parent.mkdir(parents=True, exist_ok=True)
+            LOCK_SHUFFLE.touch()
+        else:
+            LOCK_SHUFFLE.unlink(missing_ok=True)
+        self.show_lock()
+
     def show_lock(self):
         name = self.lock_name()
-        self.lock_label.setText(f"Lock screen: {Path(name).stem}" if name else "Lock screen: not set")
+        if LOCK_SHUFFLE.exists():
+            self.lock_label.setText(f"Lock screen: shuffling (next: {Path(name).stem})" if name
+                                    else "Lock screen: shuffling")
+        else:
+            self.lock_label.setText(f"Lock screen: {Path(name).stem}" if name else "Lock screen: not set")
 
     def focus_first(self):
         self.walls.setFocus()
@@ -776,28 +800,15 @@ class LockPage(RowNav, QWidget):
             self.spins[which] = spin
             lay.addWidget(row(labelled(title, hint), spin))
 
-        self.shuffle = Switch()
-        self.shuffle.clicked.connect(self.set_shuffle)
-        lay.addWidget(row(labelled("Shuffle lock screen", "A random wallpaper (and its colours) each time you lock"),
-                          self.shuffle))
-
         lock_now = QPushButton("Lock now")
         lock_now.setCursor(Qt.PointingHandCursor)
         lock_now.clicked.connect(lambda: spawn(str(LOCK_SCRIPT)))
         lay.addWidget(lock_now, 0, Qt.AlignLeft)
         lay.addStretch(1)
-        self.controls = [self.idle, *self.spins.values(), self.shuffle, lock_now]
-
-    def set_shuffle(self, on: bool):
-        if on:
-            LOCK_SHUFFLE.parent.mkdir(parents=True, exist_ok=True)
-            LOCK_SHUFFLE.touch()
-        else:
-            LOCK_SHUFFLE.unlink(missing_ok=True)
+        self.controls = [self.idle, *self.spins.values(), lock_now]
 
     def refresh(self):
         self.idle.setChecked(IDLE_TOGGLE.read())
-        self.shuffle.setChecked(LOCK_SHUFFLE.exists())
         times = run(str(IDLE_SCRIPT), "get").split()
         for (which, spin), seconds in zip(self.spins.items(), times):
             spin.blockSignals(True)
