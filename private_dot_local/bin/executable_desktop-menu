@@ -25,7 +25,7 @@ SETTINGS = str(HOME / ".local/bin/hypr-settings")
 ITEMS = [
     ("\uf120", "Terminal", ["kitty"]),
     ("\uf07b", "Files", ["thunar"]),
-    ("\uf135", "App launcher", ["fuzzel", "--hide-prompt", "-I"]),
+    ("\uf135", "App launcher", ["fuzzel"]),
     None,
     ("\uf03e", "Change wallpaper", [SETTINGS, "look"]),
     ("\uf013", "Settings", [SETTINGS]),

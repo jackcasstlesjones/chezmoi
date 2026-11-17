@@ -408,7 +408,7 @@ COMMAND_LABELS = [
     (r"^thunar", "File manager"),
     (r"system-menu", "System menu"),
     (r"^wlogout", "Power menu"),
-    (r"^fuzzel --hide-prompt", "App launcher"),
+    (r"^fuzzel$", "App launcher"),
     (r"hyprpicker", "Colour picker"),
     (r"wofi-calc", "Calculator (wofi)"),
     (r"class calculator", "Calculator"),
