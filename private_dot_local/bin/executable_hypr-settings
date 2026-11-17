@@ -10,8 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QObject, QRectF, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPainter, QPen, QPixmap
+from PySide6.QtCore import QEvent, QObject, QPointF, QRectF, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QSlider, QStackedWidget,
@@ -55,10 +55,10 @@ def stylesheet() -> str:
         wal = json.loads(WAL_COLORS.read_text())
         bg, fg = wal["special"]["background"], wal["special"]["foreground"]
         c = wal["colors"]
-        surface, muted, accent = c["color0"], c["color8"], c["color11"]
+        surface, muted, accent, ok = c["color0"], c["color8"], c["color11"], c["color2"]
     except (OSError, ValueError, KeyError):
-        bg, fg, surface, muted, accent = "#2e3440", "#d8dee9", "#3b4252", "#4c566a", "#ebcb8b"
-    COLORS.update(bg=bg, fg=fg, surface=surface, muted=muted, accent=accent)
+        bg, fg, surface, muted, accent, ok = "#2e3440", "#d8dee9", "#3b4252", "#4c566a", "#ebcb8b", "#a3be8c"
+    COLORS.update(bg=bg, fg=fg, surface=surface, muted=muted, accent=accent, ok=ok)
     r = "2px"
     return f"""
     * {{ font-family: "JetBrains Mono", monospace; font-size: 10pt; color: {fg}; }}
@@ -103,6 +103,8 @@ def stylesheet() -> str:
     QSpinBox::up-button, QSpinBox::down-button {{ width: 0; border: none; }}
     QPushButton {{ background: {bg}; border: 3px solid {muted}; border-radius: {r}; padding: 8px 18px; }}
     QPushButton:hover, QPushButton:focus {{ border-color: {accent}; color: {accent}; }}
+    QPushButton#range {{ padding: 4px 14px; }}
+    QPushButton#range:checked {{ background: {accent}; border-color: {accent}; color: {bg}; }}
     QToolTip {{ background: {surface}; border: 3px solid {accent}; border-radius: {r}; }}
     """
 
@@ -572,6 +574,180 @@ class AppearancePage(RowNav, QWidget):
         self.refresh()
 
 
+# --------------------------------------------------------------------------- battery
+
+BATTERY_LOG = HOME / ".local/state/battery/battery.log"  # written by battery-log.sh every 5 min
+BATTERY_LINE = re.compile(r"^(\S+ \S+) (.+?) (\d+)%(?: ([\d.-]+)%/hr)?")
+RANGES = [("12h", 12 * 3600), ("24h", 24 * 3600), ("7d", 7 * 24 * 3600)]
+GAP = 15 * 60  # longer than this between readings: off/asleep, so break the line
+
+
+def read_battery_log() -> list[tuple[float, str, int, float | None]]:
+    """(timestamp, status, capacity, %/hr drain or None) per reading."""
+    from datetime import datetime
+    rows = []
+    try:
+        lines = BATTERY_LOG.read_text().splitlines()
+    except OSError:
+        return rows
+    for line in lines:
+        if m := BATTERY_LINE.match(line):
+            try:
+                t = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").timestamp()
+            except ValueError:
+                continue
+            rows.append((t, m.group(2), int(m.group(3)), float(m.group(4)) if m.group(4) else None))
+    return rows
+
+
+class BatteryChart(QWidget):
+    """Capacity over time: accent while on battery, green while charging, gaps when off."""
+
+    def __init__(self):
+        super().__init__()
+        self.rows: list = []
+        self.span = RANGES[1][1]
+        self.setMinimumHeight(260)
+
+    def set_data(self, rows, span: int):
+        self.rows, self.span = rows, span
+        self.update()
+
+    def paintEvent(self, e):
+        import time
+        from datetime import datetime
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        left, right, top, bottom = 44, 12, 10, 26
+        w, h = self.width() - left - right, self.height() - top - bottom
+        end = time.time()
+        start = end - self.span
+        x = lambda t: left + (t - start) / self.span * w
+        y = lambda c: top + (100 - c) / 100 * h
+
+        # Grid: 0/25/50/75/100% and time ticks
+        p.setFont(self.font())
+        for c in (0, 25, 50, 75, 100):
+            p.setPen(QPen(QColor(COLORS["muted"]), 1, Qt.DotLine if c not in (0, 100) else Qt.SolidLine))
+            p.drawLine(left, int(y(c)), left + w, int(y(c)))
+            p.setPen(QColor(COLORS["muted"]))
+            p.drawText(QRectF(0, y(c) - 8, left - 8, 16), Qt.AlignRight | Qt.AlignVCenter, f"{c}%")
+        ticks = 6 if self.span <= 24 * 3600 else 7
+        for i in range(ticks + 1):
+            t = start + i * self.span / ticks
+            fmt = "%H:%M" if self.span <= 24 * 3600 else "%a"
+            # Keep the first/last labels inside the chart instead of centred on the edge
+            box = (QRectF(x(t), top + h + 4, 60, 18), Qt.AlignLeft) if i == 0 else \
+                  (QRectF(x(t) - 60, top + h + 4, 60, 18), Qt.AlignRight) if i == ticks else \
+                  (QRectF(x(t) - 30, top + h + 4, 60, 18), Qt.AlignHCenter)
+            p.drawText(box[0], box[1] | Qt.AlignVCenter, datetime.fromtimestamp(t).strftime(fmt))
+
+        # Readings, split into runs at gaps or charging/battery changes
+        pts = [(t, st, c) for t, st, c, _ in self.rows if t >= start - GAP]
+        pairs = list(zip(pts, pts[1:]))
+        seg = lambda t0, c0, t1, c1: (QPointF(max(x(t0), left), y(c0)), QPointF(x(t1), y(c1)))
+        # Gaps first, underneath: not recorded (off or asleep), joined by a thin dotted line.
+        # Skipped when the ends are only a few pixels apart, where dots would just smudge.
+        dots = QColor(COLORS["fg"])
+        dots.setAlpha(150)
+        gap_pen = QPen(dots, 2, Qt.CustomDashLine, Qt.FlatCap)
+        gap_pen.setDashPattern([2, 2.5])  # in pen widths: 4px dash, 5px space
+        p.setPen(gap_pen)
+        for (t0, _, c0), (t1, _, c1) in pairs:
+            a_, b_ = seg(t0, c0, t1, c1)
+            if t1 - t0 > GAP and (b_ - a_).manhattanLength() > 8:
+                p.drawLine(a_, b_)
+        # Readings on top, one continuous path per run (same colour, no gap) so the
+        # joins are smooth; flat caps so run ends don't spill over the dots.
+        runs: list[tuple[str, QPainterPath]] = []
+        for (t0, _, c0), (t1, st1, c1) in pairs:
+            if t1 - t0 > GAP:
+                continue
+            colour = COLORS["accent"] if st1 == "Discharging" else COLORS["ok"]
+            a_, b_ = seg(t0, c0, t1, c1)
+            path = runs[-1][1] if runs and runs[-1][0] == colour and runs[-1][1].currentPosition() == a_ else None
+            if path is None:
+                path = QPainterPath(a_)
+                runs.append((colour, path))
+            path.lineTo(b_)
+        for colour, path in runs:
+            p.setPen(QPen(QColor(colour), 3, Qt.SolidLine, Qt.FlatCap, Qt.RoundJoin))
+            p.drawPath(path)
+        if not pts:
+            p.setPen(QColor(COLORS["muted"]))
+            p.drawText(QRectF(left, top, w, h), Qt.AlignCenter, "No readings in this range yet")
+
+
+class BatteryPage(RowNav, QWidget):
+    def __init__(self):
+        super().__init__()
+        w, lay = page("Battery", f"Logged every 5 minutes to {str(BATTERY_LOG).replace(str(HOME), '~')}")
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(w)
+
+        self.level = QLabel(objectName="title")
+        self.detail = QLabel()
+        stats = QWidget(objectName="row")
+        sl = QHBoxLayout(stats)
+        sl.setContentsMargins(16, 12, 16, 12)
+        sl.addWidget(self.level)
+        sl.addSpacing(16)
+        sl.addWidget(self.detail, 1)
+        lay.addWidget(stats)
+
+        buttons = QHBoxLayout()
+        self.range_buttons = []
+        for label, span in RANGES:
+            b = QPushButton(label, checkable=True, objectName="range")
+            b.setCursor(Qt.PointingHandCursor)
+            b.clicked.connect(lambda _=False, span=span: self.set_range(span))
+            self.range_buttons.append((b, span))
+            buttons.addWidget(b)
+        buttons.addStretch(1)
+        lay.addLayout(buttons)
+
+        self.chart = BatteryChart()
+        lay.addWidget(self.chart, 1)
+        legend = QLabel(objectName="hint")
+        legend.setText(f"<span style='color:{COLORS['accent']}'>■</span> on battery"
+                       f"&nbsp;&nbsp;&nbsp;&nbsp;<span style='color:{COLORS['ok']}'>■</span> plugged in"
+                       "&nbsp;&nbsp;&nbsp;&nbsp;┄ not recorded (off or asleep)")
+        lay.addWidget(legend)
+
+        self.controls = [b for b, _ in self.range_buttons]
+        self.span = RANGES[1][1]
+        self.timer = QTimer(self, interval=60_000, timeout=self.refresh)
+
+    def set_range(self, span: int):
+        self.span = span
+        for b, s in self.range_buttons:
+            b.setChecked(s == span)
+        self.chart.set_data(self.rows, span)
+
+    def refresh(self):
+        self.rows = read_battery_log()
+        if self.rows:
+            t, status, cap, rate = self.rows[-1]
+            self.level.setText(f"{cap}%")
+            parts = [status]
+            if status == "Discharging" and rate and rate > 0:
+                hours = cap / rate
+                parts.append(f"{rate:.1f}%/hr, about {int(hours)}h {int(hours % 1 * 60):02d}m left")
+            self.detail.setText(" · ".join(parts))
+        else:
+            self.level.setText("–")
+            self.detail.setText("No battery log yet")
+        self.set_range(self.span)
+
+    def showEvent(self, e):
+        self.refresh()
+        self.timer.start()
+
+    def hideEvent(self, e):
+        self.timer.stop()
+
+
 # --------------------------------------------------------------------------- keybinds
 
 KEY_NAMES = {
@@ -880,7 +1056,7 @@ class KeybindsPage(QWidget):
 
 # --------------------------------------------------------------------------- window
 
-PAGES = ["look", "appearance", "toggles", "lock", "keybinds"]  # `hypr-settings <page>` opens on that page
+PAGES = ["look", "appearance", "toggles", "lock", "battery", "keybinds"]  # `hypr-settings <page>` opens on that page
 
 
 class Settings(QMainWindow):
@@ -898,7 +1074,8 @@ class Settings(QMainWindow):
         look = LookPage()
         look.applied.connect(lambda: QApplication.instance().setStyleSheet(stylesheet()))
         for name, widget in (("  Look", look), ("  Appearance", AppearancePage()), ("  Toggles", TogglesPage()),
-                             ("  Lock & idle", LockPage()), ("  Keybinds", KeybindsPage())):
+                             ("  Lock & idle", LockPage()), ("  Battery", BatteryPage()),
+                             ("  Keybinds", KeybindsPage())):
             self.nav.addItem(name)
             self.stack.addWidget(widget)
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
