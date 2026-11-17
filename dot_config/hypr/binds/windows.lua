@@ -15,7 +15,8 @@ hl.bind(hyperKey .. " + A",      hl.dsp.window.fullscreen({ mode = "maximized", 
 hl.bind(mainMod .. " + SHIFT + Q", function()
     local ws = hl.get_active_workspace()
     if ws == nil then return end
-    for _, w in ipairs(hl.get_workspace_windows(ws.id)) do
+    -- Pass the workspace itself: ws.id is nil for named workspaces.
+    for _, w in ipairs(hl.get_workspace_windows(ws)) do
         hl.dispatch(hl.dsp.focus({ window = "address:" .. w.address }))
         hl.dispatch(hl.dsp.window.close())
     end
