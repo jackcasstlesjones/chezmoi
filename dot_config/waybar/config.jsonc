@@ -5,7 +5,6 @@
     "include": [
         // left
         "~/.config/waybar/modules/clock.jsonc",
-        "~/.config/waybar/modules/hostname.jsonc",
         "~/.config/waybar/modules/media.jsonc",
         // "~/.config/waybar/modules/waybar-cava.jsonc",
         // center
@@ -36,7 +35,6 @@
 
     "modules-left": [
         "custom/clock",
-        "custom/hostname",
         "custom/media"
         // "custom/cava"
     ],
