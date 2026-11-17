@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Escape, :wq, Return into the focused nvim. send_shortcut rather than
+# xdotool/wtype: it ignores the hyper modifiers still held from the bind.
+send_wq() {
+    for k in '"", key = "Escape"' '"SHIFT", key = "semicolon"' '"", key = "w"' '"", key = "q"' '"", key = "Return"'; do
+        hyprctl dispatch "hl.dsp.send_shortcut({ mods = $k })" >/dev/null
+        sleep 0.03
+    done
+}
+
 # Check if scratchpad window is open by looking for kitty process with nvim scratchpad
 if pgrep -f "kitty.*nvim.*scratchpad.md" > /dev/null; then
     # Get the window ID of the scratchpad
@@ -10,16 +19,12 @@ if pgrep -f "kitty.*nvim.*scratchpad.md" > /dev/null; then
         hyprctl dispatch "hl.dsp.focus({ window = \"address:$WINDOW_ID\" })"
         sleep 0.1
         # Send Escape to ensure we're in normal mode, then :wq and Enter
-        hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "", key = "Escape" })'
-        sleep 0.05
-        xdotool type ":wq"
-        sleep 0.05
-        hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "", key = "Return" })'
+        send_wq
         # Wait a moment for nvim to properly exit
         sleep 0.2
     else
         # Fallback: try to send :wq first, then kill if needed
-        xdotool type ":wq" && hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "", key = "Return" })'
+        send_wq
         sleep 0.3
         pkill -f "kitty.*nvim.*scratchpad.md"
     fi
