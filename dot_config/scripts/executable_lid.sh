@@ -9,7 +9,7 @@ INTERNAL_DESC="Lenovo Group Limited NE140WUM-N6M"
 # `disabled` is sticky: re-enabling needs an explicit `disabled = false`, since
 # setting mode/position alone leaves the monitor off.
 if [[ $1 == "open" ]]; then
-  hyprctl eval "hl.monitor({ output = \"desc:$INTERNAL_DESC\", mode = \"preferred\", position = \"320x1440\", scale = 1, disabled = false })" >/dev/null
+  hyprctl eval "hl.monitor({ output = \"desc:$INTERNAL_DESC\", mode = \"preferred\", position = \"2560x240\", scale = 1, disabled = false })" >/dev/null
 else
   # Only blank the panel if some *other* monitor is still lit — `hyprctl monitors`
   # lists enabled outputs only, so this is any-external rather than a brand list.
