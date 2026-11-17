@@ -25,9 +25,11 @@ hl.bind(hyperKey .. " + 3", hl.dsp.exec_cmd("hyprshot -m region --freeze --clipb
 hl.bind(hyperKey .. " + 5", hl.dsp.exec_cmd("hyprshot -m region --freeze --raw | tee >(wl-copy) | swappy -f -"))
 
 -- Type characters the keyboard layout makes awkward
-hl.bind(mainMod .. " + 1", hl.dsp.exec_cmd([[wtype "~"]]))
-hl.bind(mainMod .. " + 2", hl.dsp.exec_cmd([[wtype '`']]))
-hl.bind(mainMod .. " + 3", hl.dsp.exec_cmd([[wtype '£']]))
+-- send_shortcut, not wtype: since 0.57, wtype keys pick up the held Super.
+hl.bind(mainMod .. " + 1", hl.dsp.send_shortcut({ mods = "SHIFT", key = "grave" }))
+hl.bind(mainMod .. " + 2", hl.dsp.send_shortcut({ mods = "", key = "grave" }))
+-- £ lives on a hidden keycode in the custom us_gbp layout (dot_config/xkb).
+hl.bind(mainMod .. " + 3", hl.dsp.send_shortcut({ mods = "", key = "sterling" }))
 -- NOTE: `bind = $mainMod, B, exec, wtype n` was in hyprland.conf but never fired —
 -- SUPER+B was already bound to bluetui above and the first match wins. Left out.
 

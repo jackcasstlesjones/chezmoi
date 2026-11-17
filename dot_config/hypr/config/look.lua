@@ -68,7 +68,7 @@ hl.config({
     },
 
     input = {
-        kb_layout  = "us",
+        kb_layout  = "us_gbp", -- US + £ on a hidden keycode, see ~/.config/xkb/symbols/us_gbp
         kb_variant = "",
         kb_model   = "",
         kb_options = "",

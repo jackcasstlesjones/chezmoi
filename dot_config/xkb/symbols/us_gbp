@@ -1,0 +1,8 @@
+// US layout plus £ on a keycode no physical key sends (KEY_ALTERASE).
+// Lets Hyprland's send_shortcut type £ (Super+3) without wtype.
+default partial alphanumeric_keys
+xkb_symbols "basic" {
+    include "us(basic)"
+    name[Group1] = "English (US, with £)";
+    key <I230> { [ sterling ] };
+};
