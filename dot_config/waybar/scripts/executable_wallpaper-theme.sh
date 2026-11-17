@@ -1,11 +1,10 @@
 #!/bin/bash
-# Pick a wallpaper with an image preview, set it in hyprpaper, and recolour everything with pywal.
+# Pick a wallpaper with an image preview, set it with awww (animated), and recolour everything with pywal.
 #   no args:      open the picker in a floating kitty window
 #   pick:         run the picker in the current terminal
 #   preview FILE: draw FILE in fzf's preview pane
 
 WALLPAPER_DIR="$HOME/.config/wallpapers"
-HYPRPAPER_FILE="$HOME/.config/hypr/hyprpaper.conf"
 
 case "${1:-}" in
     pick) ;;
@@ -37,18 +36,17 @@ SELECTED=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \
 THEME=$(awk -v w="$SELECTED" '$1 == w {print $2}' <<<"$THEMES")
 WALLPAPER_PATH="$WALLPAPER_DIR/$SELECTED"
 
-# Persist the choice for the next hyprpaper start
-sed -i "s|~/.config/wallpapers/.*|~/.config/wallpapers/$SELECTED|g" "$HYPRPAPER_FILE"
-
-# -n: hyprpaper handles the wallpaper, pywal only does colours
+# -n: awww handles the wallpaper, pywal only does colours
 if [[ -n "$THEME" ]]; then
     wal --theme "$THEME" -n -q
 else
     wal -i "$WALLPAPER_PATH" -n -q
 fi
 
-hyprctl hyprpaper preload "$WALLPAPER_PATH"
-hyprctl hyprpaper wallpaper ",$WALLPAPER_PATH"
+# awww remembers the last image per monitor and restores it on daemon start.
+awww img "$WALLPAPER_PATH" \
+    --transition-type wipe --transition-angle 30 \
+    --transition-duration 1.2 --transition-fps 60
 pkill -SIGUSR2 waybar
 hyprctl reload  # re-read pywal colours for window borders
 makoctl reload  # re-read pywal colours for notifications
