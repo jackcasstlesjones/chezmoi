@@ -107,3 +107,13 @@ hl.window_rule({
     animation = "slide top",
     move      = "20 66",
 })
+
+-- Desktop right-click menu. The app re-sends this rule on launch with
+-- `monitor`/`move` set to the cursor position.
+hl.window_rule({
+    name      = "desktop-menu-float",
+    match     = { class = "^(desktop-menu)$" },
+    float     = true,
+    pin       = true,
+    no_anim   = true, -- appear instantly, like a normal context menu
+})

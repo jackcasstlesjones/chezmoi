@@ -51,3 +51,45 @@ hl.bind("CTRL + T", function()
     if w and w.class:find("chrome", 1, true) then return end
     hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL", key = "t" }))
 end)
+
+-- Right-click on the empty desktop opens a small menu (~/.local/bin/desktop-menu).
+-- Non-consuming, so right-clicks over windows and the bar still reach them; the
+-- menu only opens when nothing is under the cursor.
+local function inside(px, py, x, y, w, h)
+    return px >= x and px < x + w and py >= y and py < y + h
+end
+
+-- Close any open desktop menu the cursor isn't over.
+local function close_desktop_menus(c)
+    for _, w in ipairs(hl.get_windows()) do
+        if w.class == "desktop-menu" and not inside(c.x, c.y, w.at.x, w.at.y, w.size.x, w.size.y) then
+            hl.dispatch(hl.dsp.exec_cmd("kill " .. w.pid))
+        end
+    end
+end
+
+-- Left-click outside the menu closes it (clicking bare desktop doesn't move focus,
+-- so the menu can't notice by itself).
+hl.bind("mouse:272", function()
+    local c = hl.get_cursor_pos()
+    if c then close_desktop_menus(c) end
+end, { non_consuming = true })
+
+hl.bind("mouse:273", function()
+    local c = hl.get_cursor_pos()
+    if c == nil then return end
+    close_desktop_menus(c)
+    for _, w in ipairs(hl.get_windows()) do
+        if w.visible and w.mapped and not w.hidden
+            and inside(c.x, c.y, w.at.x, w.at.y, w.size.x, w.size.y) then
+            return
+        end
+    end
+    for _, l in ipairs(hl.get_layers()) do
+        -- 2 = top, 3 = overlay (waybar, notifications); background/bottom don't count
+        if l.mapped and l.layer >= 2 and inside(c.x, c.y, l.x, l.y, l.w, l.h) then
+            return
+        end
+    end
+    hl.dispatch(hl.dsp.exec_cmd("~/.local/bin/desktop-menu"))
+end, { non_consuming = true })
