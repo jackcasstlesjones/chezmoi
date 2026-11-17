@@ -88,3 +88,11 @@ hl.window_rule({
     center  = true,
     opacity = "0.95 0.8",
 })
+
+hl.window_rule({
+    name  = "hypr-settings-float",
+    match = { class = "^(hypr-settings)$" },
+    float  = true,
+    size   = "1100 720",
+    center = true,
+})

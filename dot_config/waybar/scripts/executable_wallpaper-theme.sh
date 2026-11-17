@@ -3,11 +3,13 @@
 #   no args:      open the picker in a floating kitty window
 #   pick:         run the picker in the current terminal
 #   preview FILE: draw FILE in fzf's preview pane
+#   apply FILE:   set FILE (name in the wallpaper dir) without the picker
 
 WALLPAPER_DIR="$HOME/.config/wallpapers"
 
 case "${1:-}" in
     pick) ;;
+    apply) SELECTED=$(basename "$2") ;;
     preview)
         # sed: fzf's documented fix so icat's trailing line doesn't scroll the pane
         kitten icat --clear --transfer-mode=memory --unicode-placeholder --stdin=no \
@@ -27,7 +29,7 @@ swirl.jpg                    ashes
 flower-dark.jpg              tempus_dusk
 "
 
-SELECTED=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \
+[[ -z "${SELECTED:-}" ]] && SELECTED=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \
     \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) -printf '%f\n' |
     sort |
     fzf --no-info --preview "\"$0\" preview {}" --preview-window=right,75%,border-left)

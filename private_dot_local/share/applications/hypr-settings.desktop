@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Settings
+Comment=Wallpaper and theme, quick toggles and keybinds
+Exec=/home/jack/.local/bin/hypr-settings
+Icon=preferences-system
+Type=Application
+Terminal=false
+Categories=Settings;
+Keywords=settings;wallpaper;theme;wifi;bluetooth;night;dnd;keybinds;shortcuts;

@@ -1,0 +1,721 @@
+#!/usr/bin/env python3
+"""Hyprland settings: wallpaper/theme, quick toggles and a keybind cheatsheet.
+
+Styled from the current pywal colours, so it follows the wallpaper.
+"""
+
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+from PySide6.QtCore import QObject, QRectF, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import (
+    QAbstractItemView, QApplication, QCheckBox, QHBoxLayout, QHeaderView, QLabel,
+    QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QSlider, QStackedWidget,
+    QPushButton, QSpinBox, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+)
+
+HOME = Path.home()
+WALLPAPER_DIR = HOME / ".config/wallpapers"
+WALLPAPER_SCRIPT = HOME / ".config/waybar/scripts/wallpaper-theme.sh"
+IDLE_SCRIPT = HOME / ".config/scripts/hypridle-control.sh"
+WAL_COLORS = HOME / ".cache/wal/colors.json"
+BINDS_DIR = HOME / ".config/hypr/binds"
+VARS_FILE = HOME / ".config/hypr/config/vars.lua"
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+THUMB = QSize(240, 135)
+COLORS: dict[str, str] = {}  # current palette, set by stylesheet()
+
+
+def run(*cmd: str) -> str:
+    """Run a command and return stdout ('' on any failure)."""
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=3).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def spawn(*cmd: str) -> None:
+    """Start a command detached, so daemons outlive this window."""
+    subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     start_new_session=True)
+
+
+# --------------------------------------------------------------------------- theme
+
+def stylesheet() -> str:
+    # Mirrors hypr/config/look.lua: rounding 2, 3px borders, color11 for "active",
+    # color8 for inactive, and gaps of 10/20. Font matches waybar.
+    try:
+        wal = json.loads(WAL_COLORS.read_text())
+        bg, fg = wal["special"]["background"], wal["special"]["foreground"]
+        c = wal["colors"]
+        surface, muted, accent = c["color0"], c["color8"], c["color11"]
+    except (OSError, ValueError, KeyError):
+        bg, fg, surface, muted, accent = "#2e3440", "#d8dee9", "#3b4252", "#4c566a", "#ebcb8b"
+    COLORS.update(bg=bg, fg=fg, surface=surface, muted=muted, accent=accent)
+    r = "2px"
+    return f"""
+    * {{ font-family: "JetBrains Mono", monospace; font-size: 10pt; color: {fg}; }}
+    QMainWindow, QWidget#page {{ background: {bg}; }}
+    QListWidget#nav {{ background: {bg}; border: none; border-right: 3px solid {muted};
+                      padding: 20px 10px; outline: none; }}
+    QListWidget#nav::item {{ padding: 8px 12px; border: 3px solid transparent; border-radius: {r};
+                            margin-bottom: 10px; }}
+    QListWidget#nav::item:selected {{ border-color: {accent}; color: {accent}; background: transparent; }}
+    QListWidget#nav::item:hover:!selected {{ border-color: {muted}; }}
+    QLabel#title {{ font-size: 16pt; font-weight: 700; color: {accent}; }}
+    QLabel#hint {{ color: {muted}; }}
+    QListWidget#walls {{ background: transparent; border: none; outline: none; }}
+    QListWidget#walls::item {{ border: 3px solid transparent; border-radius: {r}; padding: 4px; }}
+    QListWidget#walls::item:selected {{ border-color: {accent}; background: transparent; color: {accent}; }}
+    QListWidget#walls::item:hover:!selected {{ border-color: {muted}; }}
+    QWidget#row {{ background: {surface}; border: 3px solid {muted}; border-radius: {r}; }}
+    QWidget#row QLabel {{ background: transparent; }}
+    QCheckBox {{ background: transparent; }}
+    QSlider {{ background: transparent; }}
+    QSlider::groove:horizontal {{ height: 6px; border-radius: {r}; background: {muted}; }}
+    QSlider::sub-page:horizontal {{ border-radius: {r}; background: {accent}; }}
+    QSlider::handle:horizontal {{ width: 12px; margin: -6px 0; border-radius: {r}; background: {fg}; }}
+    QLineEdit {{ background: {surface}; border: 3px solid {muted}; border-radius: {r}; padding: 6px 10px; }}
+    QLineEdit:focus {{ border-color: {accent}; }}
+    QTableWidget {{ background: {bg}; border: none; gridline-color: transparent; }}
+    QTableWidget::item {{ padding: 0 8px; }}
+    QHeaderView::section {{ background: {bg}; border: none; border-bottom: 3px solid {muted};
+                           padding: 6px; font-weight: 700; color: {accent}; }}
+    QScrollBar:vertical {{ background: transparent; width: 8px; }}
+    QScrollBar::handle:vertical {{ background: {muted}; border-radius: {r}; min-height: 30px; }}
+    QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
+    QSpinBox {{ background: {bg}; border: 3px solid {muted}; border-radius: {r}; padding: 4px 8px; }}
+    QSpinBox:focus {{ border-color: {accent}; }}
+    QSpinBox::up-button, QSpinBox::down-button {{ width: 0; border: none; }}
+    QPushButton {{ background: {bg}; border: 3px solid {muted}; border-radius: {r}; padding: 8px 18px; }}
+    QPushButton:hover {{ border-color: {accent}; color: {accent}; }}
+    QToolTip {{ background: {surface}; border: 3px solid {accent}; border-radius: {r}; }}
+    """
+
+
+def page(title: str, hint: str = "") -> tuple[QWidget, QVBoxLayout]:
+    w = QWidget(objectName="page")
+    lay = QVBoxLayout(w)
+    lay.setContentsMargins(20, 20, 20, 20)
+    lay.setSpacing(10)
+    lay.addWidget(QLabel(title, objectName="title"))
+    if hint:
+        lay.addWidget(QLabel(hint, objectName="hint"))
+    return w, lay
+
+
+# --------------------------------------------------------------------------- look
+
+class ThumbSignals(QObject):
+    done = Signal(str, QImage)
+
+
+class ThumbJob(QRunnable):
+    """Decode and scale one wallpaper off the UI thread."""
+
+    def __init__(self, path: Path, signals: ThumbSignals):
+        super().__init__()
+        self.path, self.signals = path, signals
+
+    def run(self):
+        img = QImage(str(self.path))
+        if not img.isNull():
+            img = img.scaled(THUMB, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            x, y = (img.width() - THUMB.width()) // 2, (img.height() - THUMB.height()) // 2
+            img = img.copy(x, y, THUMB.width(), THUMB.height())
+        self.signals.done.emit(self.path.name, img)
+
+
+class LookPage(QWidget):
+    applied = Signal()
+
+    def __init__(self):
+        super().__init__()
+        w, lay = page("Look", "Click a wallpaper to apply it and recolour the desktop.")
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(w)
+
+        self.status = QLabel("", objectName="hint")
+        self.walls = QListWidget(objectName="walls")
+        self.walls.setViewMode(QListWidget.IconMode)
+        self.walls.setIconSize(THUMB)
+        self.walls.setResizeMode(QListWidget.Adjust)
+        self.walls.setMovement(QListWidget.Static)
+        self.walls.setSpacing(5)
+        self.walls.setUniformItemSizes(True)
+        self.walls.itemClicked.connect(self.apply)
+        lay.addWidget(self.walls, 1)
+        lay.addWidget(self.status)
+
+        self.items: dict[str, QListWidgetItem] = {}
+        self.signals = ThumbSignals()
+        self.signals.done.connect(self.set_thumb)
+        blank = QPixmap(THUMB)
+        blank.fill(Qt.transparent)
+        for path in sorted(p for p in WALLPAPER_DIR.iterdir() if p.suffix.lower() in IMAGE_EXTS):
+            item = QListWidgetItem(QIcon(blank), path.stem)
+            item.setData(Qt.UserRole, path.name)
+            self.walls.addItem(item)
+            self.items[path.name] = item
+            QThreadPool.globalInstance().start(ThumbJob(path, self.signals))
+        self.mark_current()
+        self.proc = None
+
+    def set_thumb(self, name: str, img: QImage):
+        if not img.isNull():
+            self.items[name].setIcon(QIcon(QPixmap.fromImage(img)))
+
+    def mark_current(self):
+        m = re.search(r"image: (.+)$", run("awww", "query"), re.M)
+        if m and (item := self.items.get(Path(m.group(1)).name)):
+            self.walls.setCurrentItem(item)
+
+    def apply(self, item: QListWidgetItem):
+        if self.proc and self.proc.poll() is None:
+            return  # previous apply still running
+        name = item.data(Qt.UserRole)
+        self.status.setText(f"Applying {name}…")
+        self.proc = subprocess.Popen([str(WALLPAPER_SCRIPT), "apply", name],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        QTimer.singleShot(200, self.wait_for_apply)
+
+    def wait_for_apply(self):
+        if self.proc.poll() is None:
+            QTimer.singleShot(200, self.wait_for_apply)
+            return
+        self.status.setText("")
+        self.applied.emit()
+
+
+# --------------------------------------------------------------------------- toggles
+
+class Toggle:
+    def __init__(self, label: str, hint: str, read, write):
+        self.label, self.hint, self.read, self.write = label, hint, read, write
+
+
+def hyprsunset_on(on: bool):
+    if on:
+        spawn("hyprsunset", "-t", "2000")
+    else:
+        run("pkill", "-x", "hyprsunset")
+
+
+def hypridle_on(on: bool):
+    if on:
+        spawn("hypridle")
+    else:
+        run("pkill", "-x", "hypridle")
+
+
+TOGGLES = [
+    Toggle("Wi-Fi", "Wireless radio",
+           lambda: run("nmcli", "radio", "wifi").strip() == "enabled",
+           lambda on: run("nmcli", "radio", "wifi", "on" if on else "off")),
+    Toggle("Bluetooth", "Adapter power",
+           lambda: "Powered: yes" in run("bluetoothctl", "show"),
+           lambda on: run("bluetoothctl", "power", "on" if on else "off")),
+    Toggle("Night light", "Warm screen (hyprsunset, 2000K)",
+           lambda: bool(run("pgrep", "-x", "hyprsunset")),
+           hyprsunset_on),
+    Toggle("Do not disturb", "Hide notifications",
+           lambda: "do-not-disturb" in run("makoctl", "mode"),
+           lambda on: run("makoctl", "mode", "-a" if on else "-r", "do-not-disturb")),
+]
+
+IDLE_TOGGLE = Toggle("Auto lock & suspend", "hypridle; turn off to keep the machine awake",
+                     lambda: bool(run("pgrep", "-x", "hypridle")), hypridle_on)
+
+
+def read_volume() -> int:
+    m = re.search(r"Volume: ([\d.]+)", run("wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"))
+    return round(float(m.group(1)) * 100) if m else 0
+
+
+def read_brightness() -> int:
+    parts = run("brightnessctl", "-m").strip().split(",")
+    return int(parts[3].rstrip("%")) if len(parts) > 3 else 0
+
+
+SLIDERS = [
+    ("Volume", read_volume,
+     lambda v: run("wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{v / 100:.2f}"), 0, 100),
+    ("Brightness", read_brightness,
+     lambda v: run("brightnessctl", "-q", "set", f"{v}%"), 1, 100),
+]
+
+
+class Switch(QCheckBox):
+    """On/off switch with a sliding knob, squared off to match Hyprland's rounding."""
+
+    def __init__(self):
+        super().__init__()
+        self.setFixedSize(52, 26)
+        self.setCursor(Qt.PointingHandCursor)
+
+    def hitButton(self, pos):
+        return self.rect().contains(pos)
+
+    def paintEvent(self, e):
+        on = self.isChecked()
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(QPen(QColor(COLORS["accent"] if on else COLORS["muted"]), 3))
+        p.setBrush(QColor(COLORS["accent"] if on else COLORS["bg"]))
+        p.drawRoundedRect(QRectF(1.5, 1.5, self.width() - 3, self.height() - 3), 2, 2)
+        knob = self.height() - 12
+        x = self.width() - knob - 6 if on else 6
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(COLORS["bg"] if on else COLORS["muted"]))
+        p.drawRoundedRect(QRectF(x, 6, knob, knob), 1, 1)
+
+
+def labelled(title: str, hint: str) -> QLabel:
+    return QLabel(f"<b>{title}</b><br><span style='font-size:9pt'>{hint}</span>")
+
+
+def row(*widgets, stretch_at: int = 0) -> QWidget:
+    r = QWidget(objectName="row")
+    lay = QHBoxLayout(r)
+    lay.setContentsMargins(16, 12, 16, 12)
+    for i, w in enumerate(widgets):
+        lay.addWidget(w, 1 if i == stretch_at else 0)
+    return r
+
+
+class TogglesPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        w, lay = page("Quick toggles")
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(w)
+
+        self.boxes = []
+        for t in TOGGLES:
+            text = labelled(t.label, t.hint)
+            box = Switch()
+            box.clicked.connect(lambda on, t=t: (t.write(on), QTimer.singleShot(400, self.refresh)))
+            self.boxes.append((t, box))
+            lay.addWidget(row(text, box))
+
+        self.sliders = []
+        for name, read, write, lo, hi in SLIDERS:
+            label = QLabel(f"<b>{name}</b>")
+            label.setFixedWidth(110)
+            value = QLabel()
+            value.setFixedWidth(44)
+            s = QSlider(Qt.Horizontal)
+            s.setRange(lo, hi)
+            s.valueChanged.connect(lambda v, value=value: value.setText(f"{v}%"))
+            s.sliderMoved.connect(write)
+            s.valueChanged.connect(lambda v, s=s, write=write: None if s.isSliderDown() else write(v))
+            self.sliders.append((read, s, value))
+            lay.addWidget(row(label, s, value, stretch_at=1))
+        lay.addStretch(1)
+
+        self.timer = QTimer(self, interval=3000, timeout=self.refresh)
+
+    def refresh(self):
+        for t, box in self.boxes:
+            box.setChecked(t.read())
+        for read, s, value in self.sliders:
+            if s.isSliderDown():
+                continue
+            s.blockSignals(True)  # don't write back the value we just read
+            s.setValue(read())
+            s.blockSignals(False)
+            value.setText(f"{s.value()}%")
+
+    def showEvent(self, e):
+        self.refresh()
+        self.timer.start()
+
+    def hideEvent(self, e):
+        self.timer.stop()
+
+
+# --------------------------------------------------------------------------- lock & idle
+
+class LockPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        w, lay = page("Lock & idle", "hypridle timeouts; saved to ~/.config/hypr/hypridle.conf")
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(w)
+
+        self.idle = Switch()
+        self.idle.clicked.connect(lambda on: (IDLE_TOGGLE.write(on), QTimer.singleShot(400, self.refresh)))
+        lay.addWidget(row(labelled(IDLE_TOGGLE.label, IDLE_TOGGLE.hint), self.idle))
+
+        self.spins = {}
+        for which, title, hint in (("lock", "Lock after", "Idle time before the lock screen"),
+                                   ("suspend", "Suspend after", "Idle time before the laptop sleeps")):
+            spin = QSpinBox(suffix=" min", minimum=1, maximum=480)
+            spin.setKeyboardTracking(False)  # save on Enter / focus out, not every keystroke
+            spin.setFixedWidth(110)
+            spin.valueChanged.connect(lambda v, which=which: run(str(IDLE_SCRIPT), "set", which, str(v)))
+            self.spins[which] = spin
+            lay.addWidget(row(labelled(title, hint), spin))
+
+        lock_now = QPushButton("Lock now")
+        lock_now.setCursor(Qt.PointingHandCursor)
+        lock_now.clicked.connect(lambda: spawn("loginctl", "lock-session"))
+        lay.addWidget(lock_now, 0, Qt.AlignLeft)
+        lay.addStretch(1)
+
+    def refresh(self):
+        self.idle.setChecked(IDLE_TOGGLE.read())
+        times = run(str(IDLE_SCRIPT), "get").split()
+        for (which, spin), seconds in zip(self.spins.items(), times):
+            spin.blockSignals(True)
+            spin.setValue(int(seconds) // 60)
+            spin.blockSignals(False)
+
+    def showEvent(self, e):
+        self.refresh()
+
+
+# --------------------------------------------------------------------------- keybinds
+
+KEY_NAMES = {
+    "SUPER": "Super", "SHIFT": "Shift", "CTRL": "Ctrl", "ALT": "Alt",
+    "mouse_down": "Scroll ↓", "mouse_up": "Scroll ↑", "Return": "Enter", "space": "Space",
+    "tab": "Tab", "period": ".", "comma": ",", "minus": "-", "equal": "=", "grave": "`",
+    "left": "←", "right": "→", "up": "↑", "down": "↓",
+    "mouse:272": "Left click", "mouse:273": "Right click", "mouse:274": "Middle click",
+    "switch:off:Lid Switch": "Lid opened", "switch:on:Lid Switch": "Lid closed",
+    "XF86AudioRaiseVolume": "Vol +", "XF86AudioLowerVolume": "Vol −",
+    "XF86AudioMute": "Mute", "XF86AudioMicMute": "Mic mute",
+    "XF86MonBrightnessUp": "Bright +", "XF86MonBrightnessDown": "Bright −",
+    "XF86AudioNext": "Next", "XF86AudioPrev": "Prev",
+    "XF86AudioPlay": "Play", "XF86AudioPause": "Pause",
+}
+
+SECTIONS = {"apps": "Apps & tools", "windows": "Windows", "workspaces": "Workspaces",
+            "media": "Media & hardware"}
+
+# (pattern on the shell command, label). First match wins.
+COMMAND_LABELS = [
+    (r"^kitty$", "Terminal"),
+    (r"^thunar", "File manager"),
+    (r"system-menu", "System menu"),
+    (r"^wlogout", "Power menu"),
+    (r"^fuzzel --hide-prompt", "App launcher"),
+    (r"hyprpicker", "Colour picker"),
+    (r"wofi-calc", "Calculator (wofi)"),
+    (r"class calculator", "Calculator"),
+    (r"copy-latest-download", "Copy latest download"),
+    (r"bluetui", "Bluetooth"),
+    (r"toggle-samsung-res", "Toggle Samsung monitor resolution"),
+    (r"^hyprlock", "Lock screen"),
+    (r"yazi-cwd", "Yazi file manager"),
+    (r"fuzzel-find-dir", "Find a folder"),
+    (r"scratchpad\.sh", "Notes scratchpad"),
+    (r"clipboard-history", "Clipboard history"),
+    (r"hyprshot.*clipboard-only", "Screenshot a region to clipboard"),
+    (r"hyprshot.*swappy", "Screenshot a region and annotate"),
+    (r"pkill hyprsunset", "Toggle night light"),
+    (r"^hyprsunset", "Night light on"),
+    (r"output-volume raise", "Volume up"),
+    (r"output-volume lower", "Volume down"),
+    (r"brightness raise", "Brightness up"),
+    (r"brightness lower", "Brightness down"),
+    (r"set-mute @DEFAULT_AUDIO_SINK@", "Mute audio"),
+    (r"set-mute @DEFAULT_AUDIO_SOURCE@", "Mute microphone"),
+    (r"lid\.sh open", "Turn laptop screen on"),
+    (r"lid\.sh close", "Turn laptop screen off (if external is connected)"),
+    (r"move-to-workspace", "Move window to a workspace (picker)"),
+    (r"toggle-workspaces-monitors", "Swap workspaces between monitors"),
+]
+
+PLAYER = {"next": "Next track", "previous": "Previous track", "play-pause": "Play / pause"}
+DIRS = {"left": "left", "right": "right", "up": "up", "down": "down"}
+ARROWS = {"Left": "←", "Right": "→", "Up": "↑", "Down": "↓"}
+TYPED = {("SHIFT", "grave"): "~", ("", "grave"): "`", ("", "sterling"): "£"}
+
+
+def lua_vars() -> dict[str, str]:
+    try:
+        return dict(re.findall(r'(\w+)\s*=\s*"([^"]*)"', VARS_FILE.read_text()))
+    except OSError:
+        return {}
+
+
+def key_list(expr: str, vars_: dict[str, str]) -> list[str]:
+    """`mainMod .. " + Q"` -> ["Super", "Q"]; a loop variable becomes "‹letter›"."""
+    out = []
+    for part in re.split(r"\s*\.\.\s*", expr.strip()):
+        if part.startswith('"'):
+            out.append(part.strip('"'))
+        elif part == "hyperKey":
+            out.append("Hyper")
+        else:
+            out.append(vars_.get(part, "‹letter›"))
+    keys = [k.strip() for k in "".join(out).split("+") if k.strip()]
+    if len(keys) == 1 and keys[0] in KEY_NAMES:
+        return [KEY_NAMES[keys[0]]]
+    return [KEY_NAMES.get(k, k.upper() if len(k) == 1 else k) for k in keys]
+
+
+def call_args(action: str, start: int) -> str:
+    """Text inside the parentheses that open just before `start`."""
+    depth, i = 1, start
+    while i < len(action) and depth:
+        depth += {"(": 1, ")": -1}.get(action[i], 0)
+        i += 1
+    return re.sub(r"\s+", " ", action[start:i - 1]).strip()
+
+
+def label_command(cmd: str) -> str:
+    for pattern, label in COMMAND_LABELS:
+        if re.search(pattern, cmd):
+            return label
+    if m := re.match(r"playerctl (-p (\w+) )?([\w-]+)", cmd):
+        label = PLAYER.get(m.group(3), m.group(3))
+        return f"{label} (Spotify)" if m.group(2) == "spotify" else label
+    if m := re.search(r"([\w-]+)\.sh", cmd):
+        return m.group(1).replace("-", " ").capitalize()
+    return f"Open {cmd.split()[0]}"
+
+
+def label_dispatcher(name: str, args: str, loop_values: str) -> str:
+    arg = dict(re.findall(r'(\w+) = "?([^",}]+)"?', args))
+    ws = arg.get("workspace", "")
+    target = (f"workspace {loop_values}" if ".. key" in args or ws.endswith("name:")
+              else "the scratchpad workspace" if ws.startswith("special:")
+              else f"workspace {ws.removeprefix('name:')}")
+    if name == "send_shortcut":
+        key, mods = arg.get("key", ""), args.split('"')[1] if 'mods = "' in args else ""
+        if key in ARROWS:
+            return f"Arrow key {ARROWS[key]}"
+        return f"Type {TYPED.get((mods, key), key)}"
+    if name == "focus":
+        if "direction" in arg:
+            return f"Focus window {DIRS[arg['direction']]}"
+        if ws in ("e+1", "e-1"):
+            return "Next workspace" if ws == "e+1" else "Previous workspace"
+        return f"Go to {target}"
+    if name == "window.move":
+        return f"Move window to {target}"
+    if name == "window.swap":
+        return f"Swap window {DIRS[arg['direction']]}"
+    if name == "window.resize":
+        if not args:
+            return "Drag to resize window"
+        x, y = int(arg.get("x", 0)), int(arg.get("y", 0))
+        return ("Wider" if x > 0 else "Narrower" if x < 0 else "Taller" if y > 0 else "Shorter") + " window"
+    if name == "window.fullscreen":
+        return "Toggle maximise" if arg.get("mode") == "maximized" else "Toggle fullscreen"
+    return {
+        "window.close": "Close window",
+        "window.float": "Toggle floating",
+        "window.drag": "Drag to move window",
+        "layout": "Toggle split direction",
+        "workspace.toggle_special": "Show / hide scratchpad workspace",
+        "workspace.move": "Move workspace to next monitor",
+        "no_op": "Disabled",
+    }.get(name, f"{name.replace('_', ' ')} {args}".strip())
+
+
+def describe(action: str, vars_: dict[str, str], loop_values: str) -> tuple[str, str]:
+    """(friendly label, raw detail for the tooltip)."""
+    if m := re.match(r'hl\.dsp\.exec_cmd\((?:\[\[(.*?)\]\]|"(.*?)"|(\w+))', action):
+        literal, quoted, var = m.groups()
+        cmd = literal or quoted or vars_.get(var, var)
+        return label_command(cmd), cmd
+    if m := re.match(r"hl\.dsp\.([\w.]+)\(", action):
+        args = call_args(action, m.end())
+        return label_dispatcher(m.group(1), args, loop_values), f"{m.group(1)}({args})"
+    return "", ""
+
+
+def parse_binds() -> list[dict]:
+    vars_ = lua_vars()
+    binds = []
+    for f in sorted(BINDS_DIR.glob("*.lua"), key=lambda p: list(SECTIONS).index(p.stem)
+                    if p.stem in SECTIONS else 99):
+        text = f.read_text()
+        lists = {n: re.findall(r'"([^"]*)"', body)
+                 for n, body in re.findall(r"local (\w+)\s*=\s*\{([^}]*)\}", text)}
+        loop_values, comment = "", ""
+        for line in text.splitlines():
+            s = line.strip()
+            if m := re.match(r"for _, \w+ in ipairs\((\w+)\)", s):
+                vals = lists.get(m.group(1), [])
+                loop_values = ", ".join(vals[:-1]) + f" or {vals[-1]}" if vals else "?"
+            elif s == "end":
+                loop_values = ""
+            if s.startswith("--"):
+                c = s.lstrip("- ").strip()
+                if c and not c.startswith(("hl.bind", "NOTE")):
+                    comment = comment or c
+                continue
+            if not s:
+                comment = ""
+                continue
+            if not s.startswith("hl.bind("):
+                continue
+            key, _, rest = s[len("hl.bind("):].partition(",")
+            label, raw = describe(rest.strip(), vars_, loop_values)
+            if not label:  # a Lua function: use the comment above it
+                label, raw = comment.rstrip(".") or "Custom action", "Lua function"
+            binds.append({"keys": key_list(key, vars_), "label": label, "raw": raw,
+                          "section": SECTIONS.get(f.stem, f.stem.capitalize())})
+    return binds
+
+
+class KeycapDelegate(QStyledItemDelegate):
+    """Draws a list of keys as separate square keycaps."""
+
+    def paint(self, p, option, index):
+        keys = index.data(Qt.UserRole)
+        if not keys:
+            return super().paint(p, option, index)
+        p.save()
+        p.setRenderHint(QPainter.Antialiasing)
+        fm = option.fontMetrics
+        x = option.rect.x() + 8
+        h = fm.height() + 8
+        y = option.rect.y() + (option.rect.height() - h) / 2
+        for k in keys:
+            w = fm.horizontalAdvance(k) + 16
+            rect = QRectF(x, y, w, h)
+            p.setPen(QPen(QColor(COLORS["muted"]), 2))
+            p.setBrush(QColor(COLORS["surface"]))
+            p.drawRoundedRect(rect, 2, 2)
+            p.setPen(QColor(COLORS["fg"]))
+            p.drawText(rect, Qt.AlignCenter, k)
+            x += w + 6
+        p.restore()
+
+    def sizeHint(self, option, index):
+        keys = index.data(Qt.UserRole) or []
+        fm = option.fontMetrics
+        return QSize(sum(fm.horizontalAdvance(k) + 22 for k in keys) + 16, fm.height() + 18)
+
+
+class KeybindsPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        w, lay = page("Keybinds", "Hover an action to see the command behind it.")
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(w)
+
+        self.search = QLineEdit(placeholderText="Search keys or actions…")
+        self.search.textChanged.connect(self.filter)
+        lay.addWidget(self.search)
+
+        self.table = QTableWidget(0, 2)
+        self.table.horizontalHeader().hide()
+        self.table.verticalHeader().hide()
+        self.table.setShowGrid(False)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setSelectionMode(QAbstractItemView.NoSelection)
+        self.table.setFocusPolicy(Qt.NoFocus)
+        self.table.setWordWrap(False)
+        self.table.setItemDelegateForColumn(0, KeycapDelegate(self.table))
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+
+        self.rows: list[tuple[int, int, str]] = []  # (row, header row, search text)
+        header_font = self.font()
+        header_font.setBold(True)
+        header_font.setPointSize(header_font.pointSize() + 1)
+        section, header_row = None, -1
+        for b in parse_binds():
+            if b["section"] != section:
+                section = b["section"]
+                header_row = self.table.rowCount()
+                self.table.insertRow(header_row)
+                item = QTableWidgetItem(section)
+                item.setFont(header_font)
+                item.setForeground(QColor(COLORS["accent"]))
+                self.table.setItem(header_row, 0, item)
+                self.table.setSpan(header_row, 0, 1, 2)
+                self.table.setRowHeight(header_row, 44)
+            r = self.table.rowCount()
+            self.table.insertRow(r)
+            keys = QTableWidgetItem()
+            keys.setData(Qt.UserRole, b["keys"])
+            action = QTableWidgetItem(b["label"])
+            action.setToolTip(b["raw"])
+            self.table.setItem(r, 0, keys)
+            self.table.setItem(r, 1, action)
+            self.rows.append((r, header_row,
+                              " ".join(b["keys"] + [b["label"], b["raw"]]).lower()))
+        self.table.resizeColumnToContents(0)
+        self.table.resizeRowsToContents()
+        lay.addWidget(self.table, 1)
+
+    def filter(self, text: str):
+        words = text.lower().split()
+        visible_headers = set()
+        for r, h, hay in self.rows:
+            show = all(w in hay for w in words)
+            self.table.setRowHidden(r, not show)
+            if show:
+                visible_headers.add(h)
+        for h in {h for _, h, _ in self.rows}:
+            self.table.setRowHidden(h, h not in visible_headers)
+
+    def showEvent(self, e):
+        self.search.setFocus()
+
+
+# --------------------------------------------------------------------------- window
+
+PAGES = ["look", "toggles", "lock", "keybinds"]  # `hypr-settings <page>` opens on that page
+
+
+class Settings(QMainWindow):
+    def __init__(self, page: str = "look"):
+        super().__init__()
+        self.setWindowTitle("Settings")
+        root = QWidget()
+        lay = QHBoxLayout(root)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+
+        self.nav = QListWidget(objectName="nav")
+        self.nav.setFixedWidth(190)
+        self.stack = QStackedWidget()
+        look = LookPage()
+        look.applied.connect(lambda: QApplication.instance().setStyleSheet(stylesheet()))
+        for name, widget in (("  Look", look), ("  Toggles", TogglesPage()),
+                             ("  Lock & idle", LockPage()), ("  Keybinds", KeybindsPage())):
+            self.nav.addItem(name)
+            self.stack.addWidget(widget)
+        self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
+        self.nav.setCurrentRow(PAGES.index(page) if page in PAGES else 0)
+
+        lay.addWidget(self.nav)
+        lay.addWidget(self.stack, 1)
+        self.setCentralWidget(root)
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(e)
+
+
+def main():
+    app = QApplication(sys.argv)
+    app.setDesktopFileName("hypr-settings")  # Wayland app_id, for the window rule
+    app.setStyleSheet(stylesheet())
+    win = Settings(sys.argv[1] if len(sys.argv) > 1 else "look")
+    win.resize(1100, 720)
+    win.show()
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
