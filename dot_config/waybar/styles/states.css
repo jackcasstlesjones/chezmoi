@@ -37,9 +37,6 @@
 /* Custom script modules: text colour reflects status */
 #custom-supabase.running,
 #custom-camera-power.good   { color: @ok; }
-#custom-camera-power.warning,
-#custom-claude-usage.warning { color: @warn; }
-#custom-camera-power.critical,
-#custom-claude-usage.critical { color: @urgent; }
-#custom-supabase.stopped,
-#custom-claude-usage.error  { color: @subtle; }
+#custom-camera-power.warning { color: @warn; }
+#custom-camera-power.critical { color: @urgent; }
+#custom-supabase.stopped { color: @subtle; }
