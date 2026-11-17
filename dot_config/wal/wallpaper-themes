@@ -1,0 +1,8 @@
+# Wallpapers that use a fixed pywal theme instead of colours generated from the image.
+# Read by wallpaper-theme.sh (desktop) and lock.sh (lock screen palette).
+# <wallpaper file>             <pywal theme>
+city2.png                      nordfox
+hollow-sat.jpg                 sexy-sweetlove
+frosted-dark.png               nordfox
+swirl.jpg                      ashes
+flower-dark.jpg                tempus_dusk

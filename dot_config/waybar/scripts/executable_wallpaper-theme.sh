@@ -20,14 +20,9 @@ case "${1:-}" in
     *) exec kitty --class wallpaper-picker "$0" pick ;;
 esac
 
-# Wallpapers that use a fixed pywal theme. All others get colours generated from the image.
-THEMES="
-city2.png                    nordfox
-hollow-sat.jpg               sexy-sweetlove
-frosted-dark.png             nordfox
-swirl.jpg                    ashes
-flower-dark.jpg              tempus_dusk
-"
+# Wallpapers that use a fixed pywal theme (shared with lock.sh). All others get colours
+# generated from the image.
+THEMES_FILE="$HOME/.config/wal/wallpaper-themes"
 
 [[ -z "${SELECTED:-}" ]] && SELECTED=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \
     \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) -printf '%f\n' |
@@ -35,7 +30,7 @@ flower-dark.jpg              tempus_dusk
     fzf --no-info --preview "\"$0\" preview {}" --preview-window=right,75%,border-left)
 [[ -z "$SELECTED" ]] && exit 0
 
-THEME=$(awk -v w="$SELECTED" '$1 == w {print $2}' <<<"$THEMES")
+THEME=$(awk -v w="$SELECTED" '$1 == w {print $2}' "$THEMES_FILE" 2>/dev/null)
 WALLPAPER_PATH="$WALLPAPER_DIR/$SELECTED"
 
 # -n: awww handles the wallpaper, pywal only does colours
