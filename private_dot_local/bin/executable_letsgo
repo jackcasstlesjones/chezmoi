@@ -1,23 +1,17 @@
 #!/bin/bash
 
-# Startup script to open applications in designated workspaces
+# Startup script to open applications in designated workspaces.
+# Under the Lua config, `hyprctl dispatch` takes a Lua dispatcher, not legacy `exec [rules] cmd`.
 
-# Open Spotify in workspace W
-hyprctl dispatch exec "[workspace name:W] spotify-launcher"
+launch() { # launch <workspace> <command>
+    hyprctl dispatch "hl.dsp.exec_cmd([[$2]], { workspace = \"name:$1\" })"
+}
 
-# Open Discord in workspace D
-hyprctl dispatch exec "[workspace name:D] discord"
-
-# Open Firefox in workspace F
-hyprctl dispatch exec "[workspace name:F] firefox"
-
-# Open Obsidian in workspace N
-hyprctl dispatch exec "[workspace name:N] obsidian"
-
-# Open kitty terminal fullscreen in workspace N
-hyprctl dispatch exec "[workspace name:N] kitty -e zsh -c 'cd ~/obsidian/jacks-vault/ && nvim -O scratchpad.md home.md'"
-
-# Open Thunderbird in workspace E
-hyprctl dispatch exec "[workspace name:E] thunderbird"
+launch W spotify-launcher
+launch D discord
+launch F firefox
+launch N obsidian
+launch N "kitty -e zsh -c 'cd ~/obsidian/jacks-vault/ && nvim -O scratchpad.md home.md'"
+launch E thunderbird
 
 echo "All applications launched!"
