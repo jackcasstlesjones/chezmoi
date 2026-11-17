@@ -20,6 +20,8 @@
                 ""
             ]
         },
-        "on-click": "pavucontrol"
+        // Small output/input/volume popup (right-click for the full pavucontrol mixer)
+        "on-click": "~/.local/bin/audio-popup",
+        "on-click-right": "pavucontrol"
     },
 }

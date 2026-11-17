@@ -1,0 +1,261 @@
+#!/usr/bin/env python3
+"""Audio popup for the waybar audio module: pick output / input, set volume.
+
+A layer-shell surface (via layer-shell-qt's QML module), like waybar or fuzzel, so
+Hyprland's follow-mouse can't take focus away. A transparent full-screen layer behind
+it closes it on any click outside. Single instance: launching again closes it.
+Keys: j/k move, Enter/Space choose, h/l volume, Esc close.
+Audio logic and colours come from hypr-settings.
+"""
+
+import json
+import os
+import sys
+from importlib.machinery import SourceFileLoader
+from pathlib import Path
+
+os.environ["QT_WAYLAND_SHELL_INTEGRATION"] = "layer-shell"  # before Qt starts
+
+hs = SourceFileLoader("hypr_settings", str(Path.home() / ".local/bin/hypr-settings")).load_module()
+
+from PySide6.QtCore import Property, QByteArray, QObject, Signal, Slot  # noqa: E402
+from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
+from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+
+SOCKET = "audio-popup"
+
+QML = r"""
+import QtQuick
+import QtQuick.Window
+import org.kde.layershell 1.0 as LayerShell
+
+QtObject {
+    // Click anywhere outside the popup (bar included) to close
+    property var catcher: Window {
+        visible: true
+        color: "transparent"
+        LayerShell.Window.scope: "audio-popup-catcher"
+        LayerShell.Window.layer: LayerShell.Window.LayerTop
+        LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorBottom
+                                   | LayerShell.Window.AnchorLeft | LayerShell.Window.AnchorRight
+        LayerShell.Window.exclusionZone: -1
+        LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityNone
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onPressed: Qt.quit() }
+    }
+
+    property var popup: Window {
+        id: win
+        width: 420
+        height: content.implicitHeight + 32
+        visible: true
+        color: theme.bg
+        LayerShell.Window.scope: "audio-popup"
+        LayerShell.Window.layer: LayerShell.Window.LayerOverlay
+        LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorRight
+        LayerShell.Window.margins.top: 10   // measured from below waybar's reserved area
+        LayerShell.Window.margins.right: 20
+        LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityExclusive
+
+        property int nOut: backend.outputs.length
+        property int nIn: backend.inputs.length
+        property int sel: Math.max(0, backend.outputs.findIndex(d => d.current))  // keyboard cursor
+
+        function activate(i) {
+            if (i < nOut) backend.setOutput(backend.outputs[i].name)
+            else if (i < nOut + nIn) backend.setInput(backend.inputs[i - nOut].name)
+        }
+
+        Item {
+            anchors.fill: parent
+            focus: true
+            Keys.onPressed: (e) => {
+                const last = win.nOut + win.nIn  // the volume row
+                if (e.key === Qt.Key_Escape) Qt.quit()
+                else if (e.key === Qt.Key_J || e.key === Qt.Key_Down) win.sel = Math.min(win.sel + 1, last)
+                else if (e.key === Qt.Key_K || e.key === Qt.Key_Up) win.sel = Math.max(win.sel - 1, 0)
+                else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) win.activate(win.sel)
+                else if (e.key === Qt.Key_H || e.key === Qt.Key_Left) backend.setVolume(Math.max(0, backend.volume - 5))
+                else if (e.key === Qt.Key_L || e.key === Qt.Key_Right) backend.setVolume(Math.min(100, backend.volume + 5))
+                else return
+                e.accepted = true
+            }
+        }
+
+        // 3px accent frame, like Hyprland's active border
+        Rectangle { anchors.fill: parent; color: "transparent"; border.color: theme.accent; border.width: 3; radius: 2; z: 10 }
+
+        component Heading: Text {
+            color: theme.muted; font.family: theme.font; font.pixelSize: 12; font.bold: true
+            leftPadding: 4
+        }
+        component DeviceRow: Rectangle {
+            property var dev
+            property int navIndex  // position in the j/k order
+            width: parent.width; height: 34; radius: 2
+            color: dev.current ? theme.surface : "transparent"
+            border.width: 3
+            border.color: win.sel === navIndex ? theme.accent : "transparent"
+            Text {
+                anchors.verticalCenter: parent.verticalCenter; x: 12
+                text: (dev.current ? "● " : "   ") + dev.label
+                color: dev.current ? theme.accent : theme.fg
+                font.family: theme.font; font.pixelSize: 14; font.bold: dev.current
+            }
+            MouseArea {
+                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onEntered: win.sel = navIndex
+                onClicked: win.activate(navIndex)
+            }
+        }
+
+        Column {
+            id: content
+            x: 16; y: 16; width: win.width - 32
+            spacing: 6
+
+            Heading { text: "OUTPUT" }
+            Repeater {
+                model: backend.outputs
+                DeviceRow { required property var modelData; required property int index; dev: modelData; navIndex: index }
+            }
+            Item { width: 1; height: 6 }
+            Heading { text: "INPUT" }
+            Repeater {
+                model: backend.inputs
+                DeviceRow { required property var modelData; required property int index; dev: modelData; navIndex: win.nOut + index }
+            }
+            Item { width: 1; height: 6 }
+
+            // Volume: custom bar so it matches the square look
+            Rectangle {
+                width: parent.width; height: 40; radius: 2; color: "transparent"
+                border.width: 3; border.color: win.sel === win.nOut + win.nIn ? theme.accent : "transparent"
+                Text {
+                    id: volLabel; x: 12; anchors.verticalCenter: parent.verticalCenter
+                    text: "Volume"; color: theme.fg; font.family: theme.font; font.pixelSize: 14; font.bold: true
+                }
+                Text {
+                    id: volValue; anchors.right: parent.right; anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter; width: 40; horizontalAlignment: Text.AlignRight
+                    text: bar.value + "%"; color: theme.fg; font.family: theme.font; font.pixelSize: 13
+                }
+                Item {
+                    id: bar
+                    anchors.left: volLabel.right; anchors.leftMargin: 16
+                    anchors.right: volValue.left; anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter; height: 24
+                    property int dragValue: 0
+                    property int value: drag.pressed ? dragValue : backend.volume
+                    Rectangle { id: groove; anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 6; radius: 2; color: theme.muted }
+                    Rectangle { anchors.verticalCenter: parent.verticalCenter; width: groove.width * bar.value / 100; height: 6; radius: 2; color: theme.accent }
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: groove.width * bar.value / 100 - width / 2; width: 12; height: 18; radius: 2; color: theme.fg
+                    }
+                    MouseArea {
+                        id: drag; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true; onEntered: win.sel = win.nOut + win.nIn
+                        function set(px) {
+                            bar.dragValue = Math.round(Math.max(0, Math.min(100, px / width * 100)))
+                            backend.setVolume(bar.dragValue)
+                        }
+                        onPressed: (m) => set(m.x)
+                        onPositionChanged: (m) => { if (pressed) set(m.x) }
+                    }
+                }
+            }
+        }
+
+        Timer { interval: 2000; running: true; repeat: true; onTriggered: backend.refresh() }
+    }
+}
+"""
+
+
+class Backend(QObject):
+    changed = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self._outputs, self._inputs, self._volume = [], [], 0
+        self.refresh()
+
+    def _get_outputs(self):
+        return self._outputs
+
+    def _get_inputs(self):
+        return self._inputs
+
+    def _get_volume(self):
+        return self._volume
+
+    outputs = Property("QVariantList", _get_outputs, notify=changed)
+    inputs = Property("QVariantList", _get_inputs, notify=changed)
+    volume = Property(int, _get_volume, notify=changed)
+
+    @Slot()
+    def refresh(self):
+        for kind, attr in (("sinks", "_outputs"), ("sources", "_inputs")):
+            devices, default = hs.audio_devices(kind)
+            setattr(self, attr, [{"name": n, "label": l, "current": n == default} for n, l in devices])
+        self._volume = hs.read_volume()
+        self.changed.emit()
+
+    def _pick(self, kind: str, attr: str, name: str):
+        # Optimistic: mark it current now, then switch
+        setattr(self, attr, [dict(d, current=d["name"] == name) for d in getattr(self, attr)])
+        self.changed.emit()
+        hs.set_audio_device(kind, name)
+
+    @Slot(str)
+    def setOutput(self, name):
+        self._pick("sinks", "_outputs", name)
+
+    @Slot(str)
+    def setInput(self, name):
+        self._pick("sources", "_inputs", name)
+
+    @Slot(int)
+    def setVolume(self, value):
+        self._volume = value
+        self.changed.emit()
+        hs.run("wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{value / 100:.2f}")
+
+
+def theme() -> dict:
+    try:
+        wal = json.loads(hs.WAL_COLORS.read_text())
+        c = wal["colors"]
+        colours = {"bg": wal["special"]["background"], "fg": wal["special"]["foreground"],
+                   "surface": c["color0"], "muted": c["color8"], "accent": c["color11"]}
+    except (OSError, ValueError, KeyError):
+        colours = {"bg": "#2e3440", "fg": "#d8dee9", "surface": "#3b4252", "muted": "#4c566a", "accent": "#ebcb8b"}
+    return colours | {"font": "JetBrains Mono"}
+
+
+def main():
+    app = QGuiApplication(sys.argv)
+    probe = QLocalSocket()
+    probe.connectToServer(SOCKET)
+    if probe.waitForConnected(200):  # already open: close it (toggle)
+        probe.write(b"quit")
+        probe.waitForBytesWritten(200)
+        return
+    QLocalServer.removeServer(SOCKET)
+    server = QLocalServer()
+    server.listen(SOCKET)
+    server.newConnection.connect(app.quit)
+
+    backend = Backend()
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("backend", backend)
+    engine.rootContext().setContextProperty("theme", theme())
+    engine.loadData(QByteArray(QML.encode()))
+    if not engine.rootObjects():
+        sys.exit("audio-popup: QML failed to load")
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
