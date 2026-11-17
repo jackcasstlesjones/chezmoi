@@ -44,8 +44,11 @@ else
 fi
 
 # awww remembers the last image per monitor and restores it on daemon start.
+# Random pick from the more dramatic transitions (no plain fade/slide), at a random angle.
+TRANSITIONS=(wipe wave grow outer any)
 awww img "$WALLPAPER_PATH" \
-    --transition-type wipe --transition-angle 30 \
+    --transition-type "${TRANSITIONS[RANDOM % ${#TRANSITIONS[@]}]}" \
+    --transition-angle $((RANDOM % 360)) \
     --transition-duration 1.2 --transition-fps 60
 pkill -SIGUSR2 waybar
 hyprctl reload  # re-read pywal colours for window borders
