@@ -1,4 +1,9 @@
 {
+  // Shown as one pill: the group gets the pill style, its modules sit inside it
+  "group/system": {
+    "orientation": "inherit",
+    "modules": ["cpu", "memory", "temperature"]
+  },
   "cpu": {
     "format": "{usage}% ",
     "tooltip": false,

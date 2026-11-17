@@ -7,9 +7,14 @@
 }
 
 #battery.critical:not(.charging),
-#network.disconnected,
-#temperature.critical {
+#network.disconnected {
   background-color: @urgent;
+}
+
+/* Inside the combined system pill, so colour the text rather than the background */
+#temperature.critical {
+  color: @urgent;
+  font-weight: bold;
 }
 
 #pulseaudio.muted {

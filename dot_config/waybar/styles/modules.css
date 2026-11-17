@@ -5,9 +5,7 @@
 #bluetooth,
 #network,
 #power-profiles-daemon,
-#cpu,
-#memory,
-#temperature,
+#system,
 #battery,
 #custom-supabase,
 #tray,
@@ -35,4 +33,28 @@
 
 #power-profiles-daemon {
   padding-right: 15px;
+}
+
+/* CPU, RAM and temp share the #system pill */
+#system {
+  padding: 0 5px;
+}
+
+#cpu,
+#memory,
+#temperature {
+  padding: 0 5px;
+}
+
+/* Thin dividers between them */
+#memory,
+#temperature {
+  border-left: 1px solid @subtle;
+  margin: 5px 0;
+  padding-left: 8px;
+}
+
+#cpu,
+#memory {
+  padding-right: 8px;
 }
