@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Sound
+Comment=Switch audio output and change volume (Settings → Toggles)
+Exec=/home/jack/.local/bin/hypr-settings toggles
+Icon=audio-speakers
+Type=Application
+Terminal=false
+Categories=Settings;
+Keywords=audio;output;speakers;headphones;headset;volume;switch;

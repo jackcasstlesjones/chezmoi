@@ -286,6 +286,69 @@ SLIDERS = [
 ]
 
 
+def device_label(description: str) -> str:
+    """Short, human names for PipeWire sinks/sources."""
+    d = re.sub(r"\s*\((Stereo|Mono)\)|\s+(Analog|Digital) (Stereo|Mono).*|\s+Mono$", "", description)
+    if m := re.search(r"\[([^\]]+)\]", d):  # HDMI/DP ports name the attached monitor
+        return f"{m.group(1)} monitor"
+    if "Ryzen HD Audio" in d:
+        return "Laptop speakers" if "Speaker" in d else "Laptop microphone"
+    d = re.sub(r"\s+Wireless$", "", d)
+    return re.sub(r"^(\S+ \S+) \1", r"\1", d)  # "UGREEN Camera 2K UGREEN Camera 2K" -> once
+
+
+def audio_devices(kind: str) -> tuple[list[tuple[str, str]], str]:
+    """kind "sinks" (outputs) or "sources" (inputs): ([(name, label)], default name).
+    Hides ports with nothing plugged in and sink monitors."""
+    try:
+        devs = json.loads(subprocess.run(["pactl", "-f", "json", "list", kind], capture_output=True,
+                                         text=True, timeout=3).stdout)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return [], ""
+    out = []
+    for dev in devs:
+        if dev["name"].endswith(".monitor"):
+            continue
+        active = next((p for p in dev.get("ports", []) if p.get("name") == dev.get("active_port")), {})
+        if active.get("availability") == "not available":
+            continue
+        out.append((dev["name"], device_label(dev["description"])))
+    default = run("pactl", "get-default-sink" if kind == "sinks" else "get-default-source").strip()
+    return out, default
+
+
+def set_audio_device(kind: str, name: str):
+    """Make `name` the default output/input and move existing streams onto it."""
+    single = "sink" if kind == "sinks" else "source"
+    run("pactl", f"set-default-{single}", name)
+    streams = "sink-inputs" if kind == "sinks" else "source-outputs"
+    for line in run("pactl", "list", "short", streams).splitlines():
+        run("pactl", "move-sink-input" if kind == "sinks" else "move-source-output", line.split()[0], name)
+
+
+def device_picker(kind: str, parent: QWidget) -> QComboBox:
+    """Dropdown of outputs/inputs; picking one switches (after a pause, so h/l can step)."""
+    combo = QComboBox()
+    combo.setFocusPolicy(Qt.StrongFocus)
+    combo.setFixedWidth(300)
+    timer = QTimer(parent, singleShot=True, interval=400)
+    timer.timeout.connect(lambda: set_audio_device(kind, combo.currentData()))
+    combo.currentIndexChanged.connect(timer.start)
+
+    def refresh():
+        if combo.view().isVisible():  # don't rebuild under an open dropdown
+            return
+        devices, default = audio_devices(kind)
+        combo.blockSignals(True)
+        combo.clear()
+        for name, label in devices:
+            combo.addItem(label, name)
+        combo.setCurrentIndex(max(0, combo.findData(default)))
+        combo.blockSignals(False)
+    combo.refresh = refresh
+    return combo
+
+
 class Switch(QCheckBox):
     """On/off switch with a sliding knob, squared off to match Hyprland's rounding."""
 
@@ -398,8 +461,15 @@ class TogglesPage(RowNav, QWidget):
             self.sliders.append((read, s, value))
             lay.addWidget(row(label, s, value, stretch_at=1))
 
+        # Audio devices: just the usable ones, by name
+        self.output = device_picker("sinks", self)
+        self.input = device_picker("sources", self)
+        for title, combo in (("Output", self.output), ("Input", self.input)):
+            label = QLabel(f"<b>{title}</b>")
+            label.setFixedWidth(110)
+            lay.addWidget(row(label, QWidget(), combo, stretch_at=1))
         lay.addStretch(1)
-        self.controls = [box for _, box in self.boxes] + [s for _, s, _ in self.sliders]
+        self.controls = [box for _, box in self.boxes] + [s for _, s, _ in self.sliders] + [self.output, self.input]
 
         self.timer = QTimer(self, interval=3000, timeout=self.refresh)
 
@@ -413,6 +483,8 @@ class TogglesPage(RowNav, QWidget):
             s.setValue(read())
             s.blockSignals(False)
             value.setText(f"{s.value()}%")
+        self.output.refresh()
+        self.input.refresh()
 
     def showEvent(self, e):
         self.refresh()
