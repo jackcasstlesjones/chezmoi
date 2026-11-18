@@ -37,7 +37,8 @@ WALLPAPER_PATH="$WALLPAPER_DIR/$SELECTED"
 
 # -n: awww handles the wallpaper, pywal only does colours
 if [[ -n "$THEME" ]]; then
-    wal --theme "$THEME" -n -q
+    # Dark themes first; light ones are only found with -l
+    wal --theme "$THEME" -n -q 2>/dev/null || wal --theme "$THEME" -l -n -q
 else
     wal -i "$WALLPAPER_PATH" -n -q
 fi

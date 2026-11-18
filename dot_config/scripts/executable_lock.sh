@@ -28,7 +28,8 @@ palette() {
         # for the lock screen only, leaving ~/.cache/wal (the desktop's) alone.
         # -n -s -t -e: don't set the wallpaper, terminal or tty colours, or reload anything.
         if [[ -n "$theme" ]]; then
-            PYWAL_CACHE_DIR="$tmp" wal --theme "$theme" -n -s -t -e -q 2>/dev/null
+            PYWAL_CACHE_DIR="$tmp" wal --theme "$theme" -n -s -t -e -q 2>/dev/null ||
+                PYWAL_CACHE_DIR="$tmp" wal --theme "$theme" -l -n -s -t -e -q 2>/dev/null  # light theme
         else
             PYWAL_CACHE_DIR="$tmp" wal -i "$WALLPAPER_DIR/$name" -n -s -t -e -q 2>/dev/null
         fi
