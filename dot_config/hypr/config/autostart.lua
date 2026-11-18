@@ -2,7 +2,7 @@
 hl.on("hyprland.start", function()
     -- Daemons
     hl.exec_cmd("wal -R -n -q")
-    hl.exec_cmd("pgrep -x waybar || waybar")
+    hl.exec_cmd("pgrep -x waybar || ~/.local/bin/waybar-launch")  -- layout from ~/.local/state/waybar/layout
     hl.exec_cmd("hypridle")
     hl.exec_cmd("awww-daemon")
     hl.exec_cmd("nm-applet")

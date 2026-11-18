@@ -1,0 +1,15 @@
+#!/bin/sh
+# (Re)start waybar in the chosen layout. ~/.local/state/waybar/layout holds
+# "horizontal" (default: config.jsonc, bar on top) or "vertical" (vertical.jsonc, left).
+# Set from Settings → Quick toggles → Vertical bar; autostart runs this too.
+# Popups (audio, bt, media) read the same file to open bottom-left when vertical.
+STATE="$HOME/.local/state/waybar/layout"
+
+pkill -x waybar
+i=0; while pgrep -x waybar >/dev/null && [ $i -lt 20 ]; do sleep 0.1; i=$((i + 1)); done
+
+if [ "$(cat "$STATE" 2>/dev/null)" = vertical ]; then
+    exec waybar -c "$HOME/.config/waybar/vertical.jsonc" -s "$HOME/.config/waybar/vertical.css"
+else
+    exec waybar
+fi
