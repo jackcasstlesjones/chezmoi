@@ -119,3 +119,10 @@ hl.layer_rule({
     no_anim = true,
     blur    = true,
 })
+
+-- Fuzzel (layer namespace "launcher"): blur behind its see-through background, like the calculator
+hl.layer_rule({
+    name  = "fuzzel-blur",
+    match = { namespace = "^(launcher)$" },
+    blur  = true,
+})
