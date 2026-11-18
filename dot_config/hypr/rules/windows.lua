@@ -17,7 +17,7 @@ hl.window_rule({ name = "discord-ws", match = { class = "^(discord)$" }, workspa
 hl.window_rule({ name = "spotify-ws", match = { class = "^(Spotify)$" }, workspace = "name:W" })
 
 -- Kitty transparency
-hl.window_rule({ name = "kitty-opacity", match = { class = "(kitty)" }, opacity = "0.95 0.8" })
+hl.window_rule({ name = "kitty-opacity", match = { class = "(kitty)" }, opacity = "0.85 0.75" })
 
 -- Fast animation for the scratchpad
 hl.window_rule({ name = "scratchpad-anim", match = { title = ".*scratchpad.md.*" }, animation = "popin" })
