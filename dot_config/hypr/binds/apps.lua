@@ -16,7 +16,9 @@ hl.bind(mainMod  .. " + SHIFT + L", hl.dsp.exec_cmd("~/.config/scripts/lock.sh")
 hl.bind(hyperKey .. " + Y",     hl.dsp.exec_cmd("~/.config/scripts/yazi-cwd.sh"))
 hl.bind(hyperKey .. " + O",     hl.dsp.exec_cmd("~/.config/scripts/fuzzel-find-dir.sh"))
 hl.bind(hyperKey .. " + N",     hl.dsp.exec_cmd("~/.config/scripts/scratchpad.sh"))
-hl.bind(hyperKey .. " + space", hl.dsp.exec_cmd([[hyprctl clients -j | jq -e '.[] | select(.class == "calculator")' > /dev/null || kitty --class calculator -e ~/.local/bin/calc-memory]]))
+-- Old terminal calculator (kitty + calc-memory), kept for reference:
+-- hl.bind(hyperKey .. " + space", hl.dsp.exec_cmd([[hyprctl clients -j | jq -e '.[] | select(.class == "calculator")' > /dev/null || kitty --class calculator -e ~/.local/bin/calc-memory]]))
+hl.bind(hyperKey .. " + space", hl.dsp.exec_cmd("~/.local/bin/calc-popup"))
 
 -- Clipboard history
 hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("~/.config/scripts/clipboard-history.sh"))

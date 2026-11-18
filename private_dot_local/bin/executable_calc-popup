@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""Calculator popup (Hyper+Space): qalc with a live result, in the popup style.
+
+A centred layer-shell surface like audio-popup; a transparent full-screen layer behind
+it closes it on any outside click. It stays resident so it opens instantly: a
+`--daemon` (autostarted) keeps it hidden, and plain `calc-popup` just pokes its socket
+to show/hide it, starting the daemon first if needed. Type to see the result
+live; Enter saves it to history, copies it and clears; Up/Down step through earlier
+expressions; click a history row to put it back in the input; `ans` is the last
+result; Esc closes. History is shared with calc-memory (~/.cache/calc_history).
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+SOCKET = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "calc-popup.sock"
+
+
+def poke() -> bool:
+    """Toggle a running daemon. Plain sockets, no Qt, so the keypress costs ~20ms."""
+    import socket
+    try:
+        with socket.socket(socket.AF_UNIX) as s:
+            s.connect(str(SOCKET))
+        return True
+    except OSError:
+        return False
+
+
+if __name__ == "__main__" and "--daemon" not in sys.argv:
+    if not poke():
+        subprocess.Popen([sys.executable, os.path.abspath(__file__), "--daemon", "--show"], start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    sys.exit()
+
+os.environ["QT_WAYLAND_SHELL_INTEGRATION"] = "layer-shell"  # before Qt starts
+# Software rendering: no GPU context to keep resident (~half the memory); plenty for flat rectangles and text
+os.environ.setdefault("QT_QUICK_BACKEND", "software")
+
+from PySide6.QtCore import Property, QByteArray, QObject, QProcess, Signal, Slot  # noqa: E402
+from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtNetwork import QLocalServer  # noqa: E402
+from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+
+HISTORY_FILE = Path.home() / ".cache/calc_history"
+MEMORY_FILE = Path.home() / ".cache/calc_memory"
+WAL_COLORS = Path.home() / ".cache/wal/colors.json"
+SHOWN = 8  # history rows
+
+QML = r"""
+import QtQuick
+import QtQuick.Window
+import org.kde.layershell 1.0 as LayerShell
+
+QtObject {
+    property var catcher: Window {
+        visible: calc.shown
+        color: "transparent"
+        LayerShell.Window.scope: "calc-popup-catcher"
+        LayerShell.Window.layer: LayerShell.Window.LayerTop
+        LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorBottom
+                                   | LayerShell.Window.AnchorLeft | LayerShell.Window.AnchorRight
+        LayerShell.Window.exclusionZone: -1
+        LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityNone
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onPressed: calc.hide() }
+    }
+
+    property var popup: Window {
+        id: win
+        width: 520
+        height: content.implicitHeight + 32
+        visible: calc.shown
+        color: theme.bg
+        LayerShell.Window.scope: "calc-popup"
+        LayerShell.Window.layer: LayerShell.Window.LayerOverlay
+        LayerShell.Window.anchors: LayerShell.Window.AnchorNone   // centred
+        LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityExclusive
+
+        property int histPos: -1  // Up/Down cursor into calc.history; -1 = what you typed
+        property string draft: ""
+
+        onVisibleChanged: if (visible) { histPos = -1; input.text = ""; input.forceActiveFocus() }
+
+        function load(expr) { input.text = expr; input.cursorPosition = expr.length; input.forceActiveFocus() }
+
+        Rectangle { anchors.fill: parent; color: "transparent"; border.color: theme.accent; border.width: 3; radius: 2; z: 10 }
+
+        Column {
+            id: content
+            x: 16; y: 16; width: win.width - 32
+            spacing: 8
+
+            Text { text: "CALCULATOR"; leftPadding: 4; color: theme.muted; font.family: theme.font; font.pixelSize: 12; font.bold: true }
+
+            Rectangle {
+                width: parent.width; height: 44; radius: 2
+                color: theme.surface; border.width: 3; border.color: theme.accent
+                Text {
+                    id: prompt; x: 14; anchors.verticalCenter: parent.verticalCenter
+                    text: "="; color: theme.accent; font.family: theme.font; font.pixelSize: 16; font.bold: true
+                }
+                TextInput {
+                    id: input
+                    anchors.left: prompt.right; anchors.leftMargin: 12; anchors.right: parent.right; anchors.rightMargin: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    focus: true; clip: true
+                    color: theme.fg; selectionColor: theme.accent; selectedTextColor: theme.bg
+                    font.family: theme.font; font.pixelSize: 16
+                    onTextEdited: { win.histPos = -1; debounce.restart() }
+                    onTextChanged: if (text === "") calc.evaluate("")
+                    Keys.onPressed: (e) => {
+                        const n = calc.history.length
+                        if (e.key === Qt.Key_Escape) calc.hide()
+                        else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                            debounce.stop()
+                            if (calc.commit(input.text)) { input.text = ""; win.histPos = -1 }
+                        } else if (e.key === Qt.Key_Up && n > 0) {
+                            if (win.histPos === -1) win.draft = input.text
+                            win.histPos = Math.min(win.histPos + 1, n - 1)
+                            win.load(calc.history[win.histPos].expr); calc.evaluate(input.text)
+                        } else if (e.key === Qt.Key_Down && win.histPos >= 0) {
+                            win.histPos -= 1
+                            win.load(win.histPos === -1 ? win.draft : calc.history[win.histPos].expr)
+                            calc.evaluate(input.text)
+                        } else return
+                        e.accepted = true
+                    }
+                }
+                Timer { id: debounce; interval: 120; onTriggered: calc.evaluate(input.text) }
+            }
+
+            // Live result
+            Text {
+                width: parent.width; rightPadding: 6; horizontalAlignment: Text.AlignRight
+                text: calc.result !== "" ? calc.result : (input.text === "" ? " " : "…")
+                color: calc.result !== "" ? theme.accent : theme.muted
+                elide: Text.ElideLeft
+                font.family: theme.font; font.pixelSize: 26; font.bold: true
+            }
+
+            Rectangle { width: parent.width; height: 2; color: theme.muted; opacity: 0.5; visible: calc.history.length > 0 }
+
+            Repeater {
+                model: calc.history
+                Rectangle {
+                    required property var modelData
+                    required property int index
+                    width: parent.width; height: 32; radius: 2
+                    color: win.histPos === index ? theme.surface : "transparent"
+                    border.width: 3
+                    border.color: hover.containsMouse ? theme.accent : "transparent"
+                    Text {
+                        x: 12; anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width * 0.6 - 12; elide: Text.ElideRight
+                        text: modelData.expr; color: theme.fg; opacity: 0.75
+                        font.family: theme.font; font.pixelSize: 13
+                    }
+                    Text {
+                        anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width * 0.4 - 12; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft
+                        text: modelData.result; color: theme.fg
+                        font.family: theme.font; font.pixelSize: 13; font.bold: true
+                    }
+                    MouseArea {
+                        id: hover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: { win.histPos = -1; win.load(modelData.expr); calc.evaluate(modelData.expr) }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+
+def parse_live(out: str) -> str:
+    """Result from qalc's normal output, or "" when it warned or errored (half-typed input)."""
+    lines = [l for l in out.splitlines() if l.strip()]
+    if not lines or any(l.startswith(("warning:", "error:")) for l in lines):
+        return ""
+    last = lines[-1]
+    for sep in (" = ", " ≈ "):
+        if sep in last:
+            value = last.rsplit(sep, 1)[1]
+            return ("≈ " if sep == " ≈ " else "") + value
+    return ""
+
+
+def read_history() -> list[dict]:
+    try:
+        lines = HISTORY_FILE.read_text().splitlines()
+    except OSError:
+        return []
+    entries = []
+    for line in reversed(lines):
+        body = line.split(" | ", 1)[-1]
+        if " = " in body:
+            expr, result = body.rsplit(" = ", 1)
+            entries.append({"expr": expr, "result": result})
+        if len(entries) == SHOWN:
+            break
+    return entries
+
+
+class Calc(QObject):
+    changed = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self._result = ""
+        self._shown = False
+        self._history = read_history()
+        self.proc: QProcess | None = None
+
+    result = Property(str, lambda self: self._result, notify=changed)
+    history = Property("QVariantList", lambda self: self._history, notify=changed)
+    shown = Property(bool, lambda self: self._shown, notify=changed)
+    themeChanged = Signal(dict)
+
+    def set_shown(self, on: bool):
+        if on:  # pick up new history (calc-memory) and wallpaper colours
+            self._history = read_history()
+            self._result = ""
+            self.themeChanged.emit(theme())
+        self._shown = on
+        self.changed.emit()
+
+    @Slot()
+    def toggle(self):
+        self.set_shown(not self._shown)
+
+    @Slot()
+    def hide(self):
+        self.set_shown(False)
+
+    @staticmethod
+    def expand(expr: str) -> str:
+        if not re.search(r"\bans\b", expr):
+            return expr
+        try:
+            last = MEMORY_FILE.read_text().strip()
+        except OSError:
+            return expr
+        return re.sub(r"\bans\b", f"({last})", expr) if last else expr
+
+    @Slot(str)
+    def evaluate(self, expr):
+        if self.proc is not None:  # stale: a newer keystroke wins
+            self.proc.finished.disconnect()
+            self.proc.kill()
+            self.proc = None
+        if not expr.strip():
+            self._set_result("")
+            return
+        proc = QProcess(self)
+        proc.finished.connect(lambda *_: self._done(proc))
+        self.proc = proc
+        proc.start("qalc", [self.expand(expr)])
+
+    def _done(self, proc):
+        if proc is self.proc:
+            self.proc = None
+            self._set_result(parse_live(bytes(proc.readAllStandardOutput()).decode(errors="replace")))
+        proc.deleteLater()
+
+    def _set_result(self, value):
+        self._result = value
+        self.changed.emit()
+
+    @Slot(str, result=bool)
+    def commit(self, expr):
+        expr = expr.strip()
+        if not expr:
+            return False
+        full = subprocess.run(["qalc", self.expand(expr)], capture_output=True, text=True).stdout
+        if not parse_live(full):
+            return False  # don't save warnings/errors
+        result = subprocess.run(["qalc", "-t", self.expand(expr)], capture_output=True, text=True).stdout.strip()
+        HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with HISTORY_FILE.open("a") as f:
+            f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} | {expr} = {result}\n")
+        MEMORY_FILE.write_text(result + "\n")
+        subprocess.Popen(["wl-copy", result], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self._history = read_history()
+        self._set_result("")
+        return True
+
+
+def theme() -> dict:
+    try:
+        wal = json.loads(WAL_COLORS.read_text())
+        c = wal["colors"]
+        colours = {"bg": wal["special"]["background"], "fg": wal["special"]["foreground"],
+                   "surface": c["color0"], "muted": c["color8"], "accent": c["color11"]}
+    except (OSError, ValueError, KeyError):
+        colours = {"bg": "#2e3440", "fg": "#d8dee9", "surface": "#3b4252", "muted": "#4c566a", "accent": "#ebcb8b"}
+    return colours | {"font": "JetBrains Mono"}
+
+
+def main():
+    if poke():  # already running: that poke toggled it
+        return
+    app = QGuiApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)  # hiding the popup mustn't end the daemon
+    QLocalServer.removeServer(str(SOCKET))
+    server = QLocalServer()
+    if not server.listen(str(SOCKET)):
+        sys.exit(f"calc-popup: can't listen on {SOCKET}")
+
+    calc = Calc()
+
+    def on_connection():
+        while (conn := server.nextPendingConnection()) is not None:
+            conn.close()
+            calc.toggle()
+    server.newConnection.connect(on_connection)
+
+    engine = QQmlApplicationEngine()
+    ctx = engine.rootContext()
+    ctx.setContextProperty("calc", calc)
+    ctx.setContextProperty("theme", theme())
+    calc.themeChanged.connect(lambda t: ctx.setContextProperty("theme", t))
+    engine.loadData(QByteArray(QML.encode()))
+    if not engine.rootObjects():
+        sys.exit("calc-popup: QML failed to load")
+    if "--show" in sys.argv:
+        calc.set_shown(True)
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()

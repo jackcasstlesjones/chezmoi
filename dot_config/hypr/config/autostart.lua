@@ -9,6 +9,7 @@ hl.on("hyprland.start", function()
     -- Cursor theme chosen in hypr-settings (Appearance) is stored in gsettings
     hl.exec_cmd([[hyprctl setcursor "$(gsettings get org.gnome.desktop.interface cursor-theme | tr -d "'")" "$(gsettings get org.gnome.desktop.interface cursor-size)"]])
     hl.exec_cmd("swayosd-server")
+    hl.exec_cmd("~/.local/bin/calc-popup --daemon") -- resident so Hyper+Space opens it instantly
     hl.exec_cmd("udiskie --automount --notify")
 
     -- Clipboard history

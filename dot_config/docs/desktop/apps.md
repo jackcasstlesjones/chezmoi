@@ -20,6 +20,8 @@ Why layer-shell: normal windows lose focus to follow_mouse=1 when the cursor mov
 Single instance via QLocalServer (2nd launch closes 1st). Backend QObject: Properties must be declared in class body; QML reads context properties (player/backend/bt, theme dict from wal).
 media-controller: playerctl -p spotify,%any poll 500ms; optimistic updates + 1.5s hold; Spotify MPRIS ignores Shuffle/LoopStatus -> hidden; MultiEffect blurred art backdrop.
 audio-popup: lists outputs/inputs (hypr-settings audio_devices/set_audio_device: pactl, hides unplugged ports & monitors, moves streams), volume via wpctl. bt-popup: paired devices (hypr-settings bt_state via busctl GetManagedObjects), connect/disconnect via bluetoothctl, "Bluetooth settings" -> hypr-settings bluetooth.
+
+calc-popup (Hyper+Space): same QML layer-shell style, centred (AnchorNone; `anchors: 0` fails to load). Resident: autostart runs `calc-popup --daemon` (hidden); plain `calc-popup` connects to $XDG_RUNTIME_DIR/calc-popup.sock with a plain socket (no Qt, ~25ms) to toggle, starting the daemon if absent. Standalone (no hypr-settings import). Layer rule calc-popup-no-anim. Live qalc via QProcess, 120ms debounce; output with warning:/error: lines = no result. Enter: append `date | expr = result` to ~/.cache/calc_history (shared with calc-memory), result to ~/.cache/calc_memory (`ans`), wl-copy. Up/Down = previous exprs; click row = load expr. Old kitty calc-memory kept, unbound.
 Testing: never launch on the live session while the user types (exclusive keyboard grabs their input); test backends headless.
 
 ## desktop-menu
