@@ -60,9 +60,12 @@ QtObject {
         color: theme.bg
         LayerShell.Window.scope: "media-controller"
         LayerShell.Window.layer: LayerShell.Window.LayerOverlay
-        LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorLeft
-        LayerShell.Window.margins.top: 10   // below waybar's reserved area
-        LayerShell.Window.margins.left: 20
+        // Under the bar at the top; bottom-left beside the bar when it's vertical (waybar-launch)
+        LayerShell.Window.anchors: barVertical ? (LayerShell.Window.AnchorBottom | LayerShell.Window.AnchorLeft)
+                                               : (LayerShell.Window.AnchorTop | LayerShell.Window.AnchorLeft)
+        LayerShell.Window.margins.top: barVertical ? 0 : 10   // measured from below waybar's reserved area
+        LayerShell.Window.margins.bottom: barVertical ? 20 : 0
+        LayerShell.Window.margins.left: barVertical ? 10 : 20
         LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityExclusive
 
         function mmss(us) { const s = Math.max(0, Math.floor(us / 1e6)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") }
@@ -317,6 +320,14 @@ def theme() -> dict:
     return colours | {"font": "JetBrains Mono"}
 
 
+def bar_vertical() -> bool:
+    """Waybar's layout, as set by waybar-launch / Settings → Quick toggles."""
+    try:
+        return (Path.home() / ".local/state/waybar/layout").read_text().strip() == "vertical"
+    except OSError:
+        return False
+
+
 def main():
     app = QGuiApplication(sys.argv)
     probe = QLocalSocket()
@@ -334,6 +345,7 @@ def main():
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("player", player)
     engine.rootContext().setContextProperty("theme", theme())
+    engine.rootContext().setContextProperty("barVertical", bar_vertical())
     engine.loadData(QByteArray(QML.encode()))
     if not engine.rootObjects():
         sys.exit("media-controller: QML failed to load")
