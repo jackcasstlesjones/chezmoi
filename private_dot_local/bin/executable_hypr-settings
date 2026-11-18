@@ -1560,6 +1560,8 @@ class KeyNav(QObject):
         key = e.key()
         if self.win.confirm.isVisible():
             return self.win.confirm.key(e)
+        if QApplication.activePopupWidget() is not None:
+            return False  # an open dropdown list handles its own keys (Esc closes it, not the window)
         if e.modifiers() == Qt.ControlModifier and key in (Qt.Key_H, Qt.Key_J, Qt.Key_K, Qt.Key_L):
             if key == Qt.Key_H:
                 self.win.nav.setFocus()
