@@ -32,3 +32,5 @@ Copies text/uri-list (file:// percent-encoded, CRLF) -> pastes as attachment. co
 
 ## fuzzel
 Styled like desktop-menu (fuzzel.ini + wal template colors-fuzzel.ini). No icons (mismatched). radius=0 required (1.15 paints padding in border colour if radius>0). dpi-aware=no (else first frame sized for laptop DPI, flashes 1.6x). Bind: plain `fuzzel`.
+
+waybar layout: ~/.local/bin/waybar-launch (re)starts waybar per ~/.local/state/waybar/layout (horizontal = config.jsonc; vertical = vertical.jsonc + vertical.css, left bar). Autostart runs it; hypr-settings Quick toggles "Vertical bar" writes the file + reruns it. audio/bt/media popups read the file at start: vertical = anchor bottom-left (margins left 10 from the bar's zone, bottom 20). vertical.css gotchas: built-in modules stretch to bar width, custom ones don't (custom min-width 51px); `* {font-size}` beats `button {font-size}` (target `button label`); no `/*` inside CSS comments (e.g. `custom/*`) or waybar drops the whole file.

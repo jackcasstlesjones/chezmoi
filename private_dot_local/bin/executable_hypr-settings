@@ -695,6 +695,15 @@ def hypridle_on(on: bool):
         run("pkill", "-x", "hypridle")
 
 
+BAR_LAYOUT = HOME / ".local/state/waybar/layout"  # horizontal | vertical, read by waybar-launch
+
+
+def bar_vertical_on(on: bool):
+    BAR_LAYOUT.parent.mkdir(parents=True, exist_ok=True)
+    BAR_LAYOUT.write_text("vertical\n" if on else "horizontal\n")
+    spawn(str(HOME / ".local/bin/waybar-launch"))
+
+
 TOGGLES = [
     Toggle("Wi-Fi", "Wireless radio",
            lambda: run("nmcli", "radio", "wifi").strip() == "enabled",
@@ -708,6 +717,9 @@ TOGGLES = [
     Toggle("Do not disturb", "Hide notifications",
            lambda: "do-not-disturb" in run("makoctl", "mode"),
            lambda on: run("makoctl", "mode", "-a" if on else "-r", "do-not-disturb")),
+    Toggle("Vertical bar", "Waybar on the left; popups open bottom-left",
+           lambda: BAR_LAYOUT.exists() and BAR_LAYOUT.read_text().strip() == "vertical",
+           bar_vertical_on),
 ]
 
 IDLE_TOGGLE = Toggle("Auto lock & suspend", "hypridle; turn off to keep the machine awake",
