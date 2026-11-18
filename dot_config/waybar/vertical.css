@@ -1,0 +1,35 @@
+/* EXPERIMENT: vertical bar (vertical.jsonc). The normal styles, then narrow overrides. */
+@import url("style.css");
+
+* { font-size: 12px; }
+
+/* In a vertical bar waybar stretches built-in modules to the bar width (52px) but not
+   custom modules, so those get a min-width to match: 51px + 2px borders = what built-ins measure (55). */
+#custom-clock, #custom-media, #pulseaudio, #bluetooth, #network, #power-profiles-daemon,
+#system, #battery, #custom-updates, #custom-supabase, #tray {
+  padding: 8px 0;
+  margin: 0;
+  letter-spacing: 0;
+}
+#custom-clock, #custom-media, #custom-updates, #custom-supabase { min-width: 51px; }
+/* Clock: a group pill like #system, with a line between Canada, UK and the date */
+#clock {
+  background-color: @surface;
+  color: @fg;
+  border: 2px solid @accent;
+  border-radius: 4px;
+  padding: 2px 0;
+  min-width: 48px;
+}
+#custom-clock-ca, #custom-clock-uk, #custom-clock-date { padding: 5px 0; margin: 0 8px; }
+#custom-clock-uk, #custom-clock-date { border-top: 1px solid @subtle; }
+#power-profiles-daemon { padding-right: 0; }
+
+/* System pill: rows divided by a line instead of the horizontal bar's side dividers */
+#cpu, #memory, #temperature { padding: 5px 0; margin: 0 8px; }
+#memory, #temperature { border-left: none; border-top: 1px solid @subtle; }
+
+#workspaces { padding: 2px; margin: 0; }
+/* Square buttons: 36px fits the 44px inside of the pill (52 - 2x2 border - 2x2 padding) with 3px sides (4px pushed the pill 2px wider than the others) */
+#workspaces button { min-width: 36px; min-height: 36px; padding: 0; margin: 2px 3px; }
+#workspaces button label { font-size: 15px; } /* the label, or * { 12px } wins */

@@ -1,0 +1,58 @@
+// -*- mode: jsonc -*-
+// EXPERIMENT: vertical bar on the left. Same modules as config.jsonc; the keys below
+// override the included module settings (waybar keeps the main file's values).
+// Try:  pkill -x waybar; setsid -f waybar -c ~/.config/waybar/vertical.jsonc -s ~/.config/waybar/vertical.css
+// Back: pkill -x waybar; setsid -f waybar
+{
+    "include": [
+        "~/.config/waybar/modules/clock.jsonc",
+        "~/.config/waybar/modules/media.jsonc",
+        "~/.config/waybar/modules/workspaces.jsonc",
+        "~/.config/waybar/modules/audio.jsonc",
+        "~/.config/waybar/modules/bluetooth.jsonc",
+        "~/.config/waybar/modules/network.jsonc",
+        "~/.config/waybar/modules/power-profiles.jsonc",
+        "~/.config/waybar/modules/cpu-mem-temp.jsonc",
+        "~/.config/waybar/modules/battery.jsonc",
+        "~/.config/waybar/modules/updates.jsonc",
+        "~/.config/waybar/modules/supabase.jsonc",
+        "~/.config/waybar/modules/tray.jsonc"
+    ],
+
+    "position": "left",
+    "width": 52,
+    "spacing": 10,
+    "margin-top": 20,
+    "margin-bottom": 20,
+    "margin-left": 20,
+    "margin-right": 0,
+
+    // Workspaces at the top under the clock: centred, they collided with the tall bottom group
+    "modules-left": ["group/clock", "hyprland/workspaces", "custom/media"],
+    "modules-center": [],
+    "modules-right": [
+        "pulseaudio", "bluetooth", "network", "power-profiles-daemon",
+        "group/system", "battery", "custom/updates", "custom/supabase", "tray"
+    ],
+
+    // Narrow formats: stack or drop text so everything fits 64px
+    // Clock: three modules in one pill (like group/system) so they get dividers
+    "group/clock": { "orientation": "inherit", "modules": ["custom/clock-ca", "custom/clock-uk", "custom/clock-date"] },
+    "custom/clock-ca": { "exec": "TZ=Etc/GMT+7 date +%H:%M", "interval": 5, "format": "🇨🇦\n{}", "justify": "center", "tooltip": false },
+    "custom/clock-uk": { "exec": "TZ=Europe/London date +%H:%M", "interval": 5, "format": "🇬🇧\n{}", "justify": "center", "tooltip": false },
+    "custom/clock-date": {
+        "return-type": "json", "interval": 60, "justify": "center",
+        "exec": "printf '{\"text\":\"%s\\\\n%s\",\"tooltip\":\"%s\"}' \"$(TZ=Etc/GMT+7 date +%a)\" \"$(TZ=Etc/GMT+7 date +%d-%m)\" \"$(TZ=Etc/GMT+7 date '+%A %d-%m-%Y')\""
+    },
+    "custom/media": { "format": "{icon}" },
+    "pulseaudio": { "justify": "center", "format": "{icon}\n{volume}", "format-bluetooth": "{icon}\n{volume}", "format-muted": "" },
+    "network": { "format-wifi": "", "format-ethernet": "", "tooltip-format-wifi": "{essid} ({signalStrength}%)" },
+    "cpu": { "justify": "center", "format": "\n{usage}" },
+    "memory": { "justify": "center", "format": "\n{}" },
+    "temperature": { "justify": "center", "format": "{icon}\n{temperatureC}°" },
+    "battery": { "justify": "center", "format": "{icon}\n{capacity}", "format-charging": "\n{capacity}", "format-plugged": "\n{capacity}", "format-full": "{icon}\n{capacity}" },
+    // "2d · 59" is too wide: put days and count on separate lines
+    "custom/updates": { "justify": "center", "format": "\n{}", "exec": "~/.config/waybar/scripts/updates.sh | jq -c '.text |= sub(\" · \"; \"\\n\")'" },
+    "custom/supabase": { "format": "" },
+    "tray": { "spacing": 8 }
+}
