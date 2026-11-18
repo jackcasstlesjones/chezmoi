@@ -111,9 +111,11 @@ hl.window_rule({
     no_anim   = true, -- appear instantly, like a normal context menu
 })
 
--- Calculator popup (a layer): appear instantly, like the old kitty one
+-- Calculator popup (a layer): appear instantly, like the old kitty one, and blur
+-- behind its see-through background so it gets the same grain as kitty
 hl.layer_rule({
     name    = "calc-popup-no-anim",
     match   = { namespace = "^(calc-popup)$" },
     no_anim = true,
+    blur    = true,
 })

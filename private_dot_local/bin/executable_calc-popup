@@ -75,7 +75,7 @@ QtObject {
         width: 520
         height: content.implicitHeight + 32
         visible: calc.shown
-        color: theme.bg
+        color: theme.glass  // see-through bg; Hyprland blurs + grains behind it (layer rule)
         LayerShell.Window.scope: "calc-popup"
         LayerShell.Window.layer: LayerShell.Window.LayerOverlay
         LayerShell.Window.anchors: LayerShell.Window.AnchorNone   // centred
@@ -299,7 +299,8 @@ def theme() -> dict:
                    "surface": c["color0"], "muted": c["color8"], "accent": c["color11"]}
     except (OSError, ValueError, KeyError):
         colours = {"bg": "#2e3440", "fg": "#d8dee9", "surface": "#3b4252", "muted": "#4c566a", "accent": "#ebcb8b"}
-    return colours | {"font": "JetBrains Mono"}
+    # 75% opaque background (#AARRGGBB) so the blurred, grainy wallpaper shows through
+    return colours | {"font": "JetBrains Mono", "glass": "#bf" + colours["bg"].lstrip("#")}
 
 
 def main():
