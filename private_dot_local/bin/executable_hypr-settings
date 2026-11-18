@@ -32,6 +32,7 @@ WAL_COLORS = HOME / ".cache/wal/colors.json"
 WALLPAPER_THEMES = HOME / ".config/wal/wallpaper-themes"
 LOCK_PALETTES = HOME / ".cache/lock-wal"  # lock.sh's per-wallpaper palette cache
 PREVIEW_CACHE = HOME / ".cache/hypr-settings/palettes"  # image-generated palettes, for previews
+LIVE_RESTORE = HOME / ".cache/hypr-settings/live-restore.json"  # colours before a live preview
 BINDS_DIR = HOME / ".config/hypr/binds"
 VARS_FILE = HOME / ".config/hypr/config/vars.lua"
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
@@ -292,8 +293,13 @@ class Combo(QComboBox):
 
 
 class ThemeCombo(Combo):
-    """QComboBox that says when its list closes (picked or not), to reset the preview."""
+    """QComboBox that says when its list opens and closes (picked or not)."""
+    opened = Signal()
     closed = Signal()
+
+    def showPopup(self):
+        self.opened.emit()
+        super().showPopup()
 
     def hidePopup(self):
         super().hidePopup()
@@ -360,6 +366,20 @@ class LookPage(QWidget):
         self.colours.activated.connect(self.set_colours)
         self.colours.highlighted.connect(lambda i: self.show_preview(self.colours.itemData(i)))
         self.colours.closed.connect(lambda: self.show_preview(self.colours.currentData()))
+        # Live mode: while the list is open on the desktop's own wallpaper, the highlighted
+        # theme is applied lightly (pywal -e, which recolours terminals, plus borders and
+        # waybar). Esc / clicking away restores the colours from before; a pick does the
+        # full apply (wallpaper-theme.sh).
+        self.live_timer = QTimer(self, singleShot=True, interval=250)
+        self.live_timer.timeout.connect(self.live_apply)
+        self.live_proc: QProcess | None = None
+        self.live_queued: str | None = None  # theme to apply once the running one finishes
+        self.live_dirty = False  # colours currently differ from LIVE_RESTORE
+        self.live_wallpaper = ""  # desktop wallpaper when the list opened
+        self.picked = False
+        self.colours.opened.connect(self.live_open)
+        self.colours.highlighted.connect(lambda _: self.live_timer.start())
+        self.colours.closed.connect(lambda: QTimer.singleShot(0, self.live_close))  # after activated
         # Preview card: the highlighted wallpaper in the highlighted palette, updated as you
         # move through the list (and back to the saved choice when it closes)
         self.preview = QLabel()
@@ -528,7 +548,73 @@ class LookPage(QWidget):
             self.palette_jobs[name] = proc
         return None
 
+    # ----- live mode
+
+    def desktop_wallpaper(self) -> str:
+        m = re.search(r"image: (.+)$", run("awww", "query"), re.M)
+        return Path(m.group(1)).name if m else ""
+
+    def live_open(self):
+        self.picked = False
+        self.live_wallpaper = self.desktop_wallpaper()
+
+    def live_target(self) -> bool:
+        item = self.walls.currentItem()
+        return item is not None and item.data(Qt.UserRole) == self.live_wallpaper
+
+    def live_apply(self):
+        if not self.colours.view().isVisible() or not self.live_target():
+            return
+        theme = self.colours.itemData(self.colours.view().currentIndex().row())
+        if theme is None:
+            return
+        if not self.live_dirty:  # first change: keep what to go back to
+            LIVE_RESTORE.parent.mkdir(parents=True, exist_ok=True)
+            LIVE_RESTORE.write_bytes(WAL_COLORS.read_bytes())
+            self.live_dirty = True
+        if theme:
+            self.live_run(f"wal --theme {theme} -n -e -q 2>/dev/null || wal --theme {theme} -l -n -e -q")
+        else:
+            self.live_run(f"wal -i '{WALLPAPER_DIR / self.live_wallpaper}' -n -e -q")
+
+    def live_run(self, cmd: str):
+        """Run one light recolour at a time; while one runs, only the latest request waits."""
+        if self.live_proc is not None:
+            self.live_queued = cmd
+            return
+        self.live_proc = QProcess(self)
+        self.live_proc.finished.connect(self.live_done)
+        self.live_proc.start("sh", ["-c", cmd])
+
+    def live_done(self, *_):
+        self.live_proc.deleteLater()
+        self.live_proc = None
+        # Borders straight from the new colours (no config reload), then waybar's CSS
+        try:
+            c = json.loads(WAL_COLORS.read_text())["colors"]
+            run("hyprctl", "eval", "hl.config({general={col={"
+                f'active_border="rgba({c["color11"][1:]}ff)", inactive_border="rgba({c["color8"][1:]}ff)"'
+                "}}})")
+        except (OSError, ValueError, KeyError):
+            pass
+        run("pkill", "-SIGUSR2", "-x", "waybar")
+        if self.live_queued:
+            cmd, self.live_queued = self.live_queued, None
+            self.live_run(cmd)
+
+    def live_revert(self):
+        if self.live_dirty:
+            self.live_dirty = False
+            self.live_queued = None
+            self.live_run(f"wal --theme '{LIVE_RESTORE}' -n -e -q")
+
+    def live_close(self):
+        self.live_timer.stop()
+        if not self.picked:
+            self.live_revert()
+
     def set_colours(self, index: int):
+        self.picked = True
         self.show_preview(self.colours.itemData(index))
         item = self.walls.currentItem()
         self.walls.setFocus()  # back to the grid after picking
@@ -536,7 +622,13 @@ class LookPage(QWidget):
             return
         name, theme = item.data(Qt.UserRole), self.colours.itemData(index)
         if self.overrides.get(name, "") == theme:
+            self.live_revert()  # same choice: undo whatever was previewed live
             return
+        self.live_queued = None
+        if name == self.desktop_wallpaper() and not (self.proc and self.proc.poll() is None):
+            self.live_dirty = False  # the full apply below replaces the live colours
+        else:
+            self.live_revert()  # no full apply for this one, so undo the live preview
         set_theme_override(name, theme)
         self.overrides = theme_overrides()
         self.render_thumb(name)
