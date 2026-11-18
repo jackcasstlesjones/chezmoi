@@ -42,7 +42,7 @@ hl.config({
             enabled    = true,
             size       = 8,     -- wide, soft blur
             passes     = 3,     -- smoother at that size
-            noise      = 0.1,   -- heavy grain
+            noise      = 0.15,  -- heavy grain
             contrast   = 1.15,  -- deeper colour patches, less grey
             brightness = 0.85,  -- dim it so text stays readable
             vibrancy   = 0.3,   -- saturate the blurred colours
