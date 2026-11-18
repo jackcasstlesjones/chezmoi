@@ -4,13 +4,14 @@
 Styled from the current pywal colours, so it follows the wallpaper.
 """
 
+import importlib.util
 import json
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QObject, QPointF, QProcess, QRectF, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtCore import QEvent, QObject, QPointF, QProcess, QProcessEnvironment, QRectF, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QHBoxLayout, QHeaderView, QLabel,
@@ -26,6 +27,11 @@ LOCK_WALLPAPER = HOME / ".local/state/hypr/lock-wallpaper"  # symlink hyprlock.c
 LOCK_SCRIPT = HOME / ".config/scripts/lock.sh"
 LOCK_SHUFFLE = HOME / ".local/state/hypr/lock-shuffle"  # exists = random lock image each time
 WAL_COLORS = HOME / ".cache/wal/colors.json"
+# Wallpaper -> fixed pywal theme table, read by wallpaper-theme.sh and lock.sh. Managed by
+# chezmoi, so the Look page edits the chezmoi source and applies it (changes show in git).
+WALLPAPER_THEMES = HOME / ".config/wal/wallpaper-themes"
+LOCK_PALETTES = HOME / ".cache/lock-wal"  # lock.sh's per-wallpaper palette cache
+PREVIEW_CACHE = HOME / ".cache/hypr-settings/palettes"  # image-generated palettes, for previews
 BINDS_DIR = HOME / ".config/hypr/binds"
 VARS_FILE = HOME / ".config/hypr/config/vars.lua"
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
@@ -153,12 +159,142 @@ class ThumbJob(QRunnable):
             pass  # window closed before this thumbnail finished
 
 
+def read_palette(f: Path) -> dict | None:
+    """pywal colours JSON -> {bg, fg, c: [color0..15]}."""
+    try:
+        t = json.loads(f.read_text())
+        return {"bg": t["special"]["background"], "fg": t["special"]["foreground"],
+                "c": [t["colors"][f"color{i}"] for i in range(16)]}
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def all_themes() -> dict[str, dict]:
+    """Every theme `wal --theme` offers: dark, then light (yours in ~/.config/wal/colorschemes
+    override built-ins). A light theme sharing a dark one's name is unreachable, so skipped."""
+    spec = importlib.util.find_spec("pywal")
+    builtin = Path(spec.origin).parent / "colorschemes" if spec and spec.origin else None
+    themes: dict[str, dict] = {}
+    for kind in ("dark", "light"):
+        found = {}
+        for d in (builtin / kind if builtin else None, HOME / ".config/wal/colorschemes" / kind):
+            for f in sorted(d.glob("*.json")) if d and d.is_dir() else []:
+                if (pal := read_palette(f)) is not None:
+                    found[f.stem] = pal | {"light": kind == "light"}
+        for name in sorted(found):
+            themes.setdefault(name, found[name])
+    return themes
+
+
+def swatch_colours(pal: dict) -> list[str]:
+    return [pal["bg"], *pal["c"][1:7], pal["fg"]]
+
+
+def theme_overrides() -> dict[str, str]:
+    try:
+        lines = WALLPAPER_THEMES.read_text().splitlines()
+    except OSError:
+        return {}
+    return {f[0]: f[1] for line in lines if (f := line.split()) and len(f) >= 2 and not f[0].startswith("#")}
+
+
+def set_theme_override(wallpaper: str, theme: str) -> None:
+    """Set (or with theme="" remove) a wallpaper's fixed theme in the chezmoi source, then apply."""
+    source = run("chezmoi", "source-path", str(WALLPAPER_THEMES)).strip()
+    path = Path(source) if source else WALLPAPER_THEMES  # no chezmoi: edit the live file
+    lines = path.read_text().splitlines() if path.exists() else []
+    entry = f"{wallpaper:<30} {theme}"
+    i = next((i for i, l in enumerate(lines) if l.split()[:1] == [wallpaper]), None)
+    if i is None and theme:
+        lines.append(entry)
+    elif i is not None:
+        if theme:
+            lines[i] = entry
+        else:
+            del lines[i]
+    path.write_text("\n".join(lines) + "\n")
+    if source:
+        run("chezmoi", "apply", "--force", str(WALLPAPER_THEMES))
+    (LOCK_PALETTES / f"{wallpaper}.conf").unlink(missing_ok=True)  # lock.sh regenerates it
+
+
+def palette_preview(thumb: QImage | None, pal: dict | None, w: int = 216, h: int = 122) -> QPixmap:
+    """A small mock desktop in a palette: the wallpaper, a bar with pills, and a window with
+    a line of text and the palette, styled like this desktop (square, accent border)."""
+    pm = QPixmap(w, h)
+    pm.fill(QColor(COLORS["surface"]))
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.Antialiasing)
+    if thumb is not None and not thumb.isNull():
+        p.drawImage(QRectF(0, 0, w, h), thumb)
+    font = p.font()
+    font.setFamily("JetBrains Mono")
+    font.setPixelSize(10)
+    font.setBold(True)
+    p.setFont(font)
+    if pal is None:
+        p.setPen(QColor(COLORS["fg"]))
+        p.drawText(QRectF(0, 0, w, h), Qt.AlignCenter, "Generating…")
+        p.end()
+        return pm
+    bg, fg, c = QColor(pal["bg"]), QColor(pal["fg"]), pal["c"]
+    accent = QColor(c[11])
+    # Bar: three pills like waybar's
+    for x, pw, border in ((6, 40, accent), (w / 2 - 24, 48, QColor(c[4])), (w - 58, 52, fg)):
+        p.setPen(QPen(border, 1.5))
+        p.setBrush(QColor(c[0]))
+        p.drawRoundedRect(QRectF(x, 5, pw, 11), 2, 2)
+        p.setPen(Qt.NoPen)
+        p.setBrush(fg)
+        p.drawRect(QRectF(x + 6, 9.5, pw - 12, 2))
+    # Window
+    win = QRectF(10, 23, w - 20, h - 31)
+    p.setPen(QPen(accent, 2))
+    p.setBrush(bg)
+    p.drawRoundedRect(win, 2, 2)
+    x0, y = win.x() + 8, win.y() + 17
+    for parts in ((("~ ", c[4]), ("❯ ", c[2]), ("wal", fg)),
+                  (("error ", c[1]), ("warn ", c[3]), ("ok ", c[2]), ("info", c[6]))):
+        x = x0
+        for text, col in parts:
+            p.setPen(QColor(col))
+            p.drawText(int(x), int(y), text)
+            x += p.fontMetrics().horizontalAdvance(text)
+        y += 14
+    # Palette: colours 0-7 over 8-15
+    cell = (win.width() - 16) / 8
+    for i in range(16):
+        p.fillRect(QRectF(x0 + (i % 8) * cell, win.bottom() - 25 + (i // 8) * 9, cell + 0.5, 9), QColor(c[i]))
+    p.end()
+    return pm
+
+
+def swatch(colours: list[str], w: int = 64, h: int = 12) -> QPixmap:
+    pm = QPixmap(w, h)
+    p = QPainter(pm)
+    cell = w / len(colours)
+    for i, c in enumerate(colours):
+        p.fillRect(QRectF(i * cell, 0, cell + 1, h), QColor(c))
+    p.end()
+    return pm
+
+
+class ThemeCombo(QComboBox):
+    """QComboBox that says when its list closes (picked or not), to reset the preview."""
+    closed = Signal()
+
+    def hidePopup(self):
+        super().hidePopup()
+        self.closed.emit()
+
+
 class LookPage(QWidget):
     applied = Signal()
 
     def __init__(self):
         super().__init__()
-        w, lay = page("Look", "Pick where a wallpaper goes (t to switch, s shuffles the lock screen), then click one.")
+        w, lay = page("Look", "Pick where a wallpaper goes (t to switch, s shuffles the lock screen), then click one. "
+                              "c picks its colours.")
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(w)
@@ -197,20 +333,52 @@ class LookPage(QWidget):
         self.walls.itemClicked.connect(self.apply)
         self.walls.itemActivated.connect(self.apply)  # Enter
         lay.addWidget(self.walls, 1)
+
+        # Colours for the highlighted wallpaper: from the image, or a fixed pywal theme
+        self.themes = all_themes()
+        self.overrides = theme_overrides()
+        self.colours_label = QLabel()
+        self.colours = ThemeCombo()
+        self.colours.setFixedWidth(340)
+        self.colours.setIconSize(QSize(64, 12))
+        self.colours.setMaxVisibleItems(16)
+        self.colours.addItem("From image", "")
+        for name, pal in self.themes.items():
+            self.colours.addItem(QIcon(swatch(swatch_colours(pal))), f"{name} · light" if pal["light"] else name, name)
+        self.colours.activated.connect(self.set_colours)
+        self.colours.highlighted.connect(lambda i: self.show_preview(self.colours.itemData(i)))
+        self.colours.closed.connect(lambda: self.show_preview(self.colours.currentData()))
+        # Preview card: the highlighted wallpaper in the highlighted palette, updated as you
+        # move through the list (and back to the saved choice when it closes)
+        self.preview = QLabel()
+        self.preview.setFixedSize(216, 122)
+        self.palette_jobs: dict[str, QProcess] = {}
+        colours_box = QVBoxLayout()
+        colours_box.addWidget(self.colours_label)
+        colours_box.addWidget(self.colours)
+        colours_box.addStretch(1)
+        colours_row = QHBoxLayout()
+        colours_row.addLayout(colours_box)
+        colours_row.addSpacing(12)
+        colours_row.addWidget(self.preview)
+        colours_row.addStretch(1)
+        lay.addLayout(colours_row)
         lay.addWidget(self.status)
+        self.walls.currentItemChanged.connect(self.sync_colours)
 
         self.items: dict[str, QListWidgetItem] = {}
+        self.thumbs: dict[str, QImage] = {}
         self.signals = ThumbSignals()
         self.signals.done.connect(self.set_thumb)
         blank = QPixmap(THUMB)
         blank.fill(Qt.transparent)
         for path in sorted(p for p in WALLPAPER_DIR.iterdir() if p.suffix.lower() in IMAGE_EXTS):
             item = QListWidgetItem(QIcon(blank), "")
-            item.setToolTip(path.stem)
             item.setSizeHint(THUMB + QSize(14, 14))  # thumbnail + padding/border, no caption row
             item.setData(Qt.UserRole, path.name)
             self.walls.addItem(item)
             self.items[path.name] = item
+            self.set_tooltip(path.name)
             QThreadPool.globalInstance().start(ThumbJob(path, self.signals))
         self.proc = None
         self.set_target("desktop")
@@ -227,6 +395,10 @@ class LookPage(QWidget):
         if e.text() == "s":
             self.shuffle.setChecked(not self.shuffle.isChecked())
             self.set_shuffle(self.shuffle.isChecked())
+            return True
+        if e.text() == "c" and self.walls.currentItem():
+            self.colours.setFocus()
+            self.colours.showPopup()
             return True
         if e.text() == "t":
             order = [t for _, t in self.target_buttons]
@@ -272,7 +444,103 @@ class LookPage(QWidget):
 
     def set_thumb(self, name: str, img: QImage):
         if not img.isNull():
-            self.items[name].setIcon(QIcon(QPixmap.fromImage(img)))
+            self.thumbs[name] = img
+            self.render_thumb(name)
+            item = self.walls.currentItem()
+            if item is not None and item.data(Qt.UserRole) == name:
+                self.sync_colours(item)
+
+    def render_thumb(self, name: str):
+        """Thumbnail, plus a strip of the theme's colours when it has a fixed theme."""
+        img = self.thumbs.get(name)
+        if img is None:
+            return
+        pm = QPixmap.fromImage(img)
+        theme = self.overrides.get(name)
+        if theme in self.themes:
+            p = QPainter(pm)
+            strip = swatch(swatch_colours(self.themes[theme]), 96, 14)
+            p.fillRect(QRectF(6, pm.height() - 26, strip.width() + 6, strip.height() + 6), QColor(COLORS["bg"]))
+            p.drawPixmap(9, pm.height() - 23, strip)
+            p.end()
+        self.items[name].setIcon(QIcon(pm))
+
+    def set_tooltip(self, name: str):
+        theme = self.overrides.get(name)
+        self.items[name].setToolTip(f"{Path(name).stem} · colours: {theme}" if theme else Path(name).stem)
+
+    def sync_colours(self, item: QListWidgetItem | None, _=None):
+        if item is None:
+            return
+        name = item.data(Qt.UserRole)
+        self.colours_label.setText(f"Colours for <b>{Path(name).stem}</b>")
+        self.colours.setCurrentIndex(max(0, self.colours.findData(self.overrides.get(name, ""))))
+        self.show_preview(self.overrides.get(name, ""))
+
+    def show_preview(self, theme: str):
+        item = self.walls.currentItem()
+        if item is None:
+            return
+        name = item.data(Qt.UserRole)
+        pal = self.themes.get(theme) if theme else self.image_palette(name)
+        self.preview.setPixmap(palette_preview(self.thumbs.get(name), pal))
+
+    def image_palette(self, name: str) -> dict | None:
+        """The palette pywal generates from the image: cached, else generated in the
+        background (a separate PYWAL_CACHE_DIR, so the desktop's colours are untouched)."""
+        cached = PREVIEW_CACHE / f"{name}.json"
+        if cached.exists():
+            return read_palette(cached)
+        if name not in self.palette_jobs:
+            tmp = PREVIEW_CACHE / f".{name}.tmp"
+            tmp.mkdir(parents=True, exist_ok=True)
+            proc = QProcess(self)
+            env = QProcessEnvironment.systemEnvironment()
+            env.insert("PYWAL_CACHE_DIR", str(tmp))
+            proc.setProcessEnvironment(env)
+
+            def done(*_):
+                if (tmp / "colors.json").exists():
+                    (tmp / "colors.json").replace(cached)
+                subprocess.run(["rm", "-rf", str(tmp)])
+                self.palette_jobs.pop(name, None)
+                item = self.walls.currentItem()
+                if item is not None and item.data(Qt.UserRole) == name:  # still looking at it
+                    view = self.colours.view()
+                    theme = (self.colours.itemData(view.currentIndex().row()) if view.isVisible()
+                             else self.colours.currentData())
+                    if not theme:
+                        self.show_preview("")
+            proc.finished.connect(done)
+            proc.start("wal", ["-i", str(WALLPAPER_DIR / name), "-n", "-s", "-t", "-e", "-q"])
+            self.palette_jobs[name] = proc
+        return None
+
+    def set_colours(self, index: int):
+        self.show_preview(self.colours.itemData(index))
+        item = self.walls.currentItem()
+        self.walls.setFocus()  # back to the grid after picking
+        if item is None:
+            return
+        name, theme = item.data(Qt.UserRole), self.colours.itemData(index)
+        if self.overrides.get(name, "") == theme:
+            return
+        set_theme_override(name, theme)
+        self.overrides = theme_overrides()
+        self.render_thumb(name)
+        self.set_tooltip(name)
+        what = theme or "colours from the image"
+        # Re-apply wherever this wallpaper is showing, so the change is visible now
+        if name == self.lock_name():
+            run(str(WALLPAPER_SCRIPT), "lock", name)
+        m = re.search(r"image: (.+)$", run("awww", "query"), re.M)
+        if m and Path(m.group(1)).name == name and not (self.proc and self.proc.poll() is None):
+            self.status.setText(f"{Path(name).stem}: {what}. Applying…")
+            self.proc = subprocess.Popen([str(WALLPAPER_SCRIPT), "apply", name],
+                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            QTimer.singleShot(200, self.wait_for_apply)
+        else:
+            self.status.setText(f"{Path(name).stem}: {what}")
 
     def mark_current(self):
         m = re.search(r"image: (.+)$", run("awww", "query"), re.M)

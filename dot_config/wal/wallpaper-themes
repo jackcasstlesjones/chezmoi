@@ -1,5 +1,6 @@
 # Wallpapers that use a fixed pywal theme instead of colours generated from the image.
-# Read by wallpaper-theme.sh (desktop) and lock.sh (lock screen palette).
+# Read by wallpaper-theme.sh (desktop) and lock.sh (lock screen palette); edited by
+# hypr-settings (Look page, c). Dark or light theme names; light ones are tried with -l.
 # <wallpaper file>             <pywal theme>
 city2.png                      nordfox
 hollow-sat.jpg                 sexy-sweetlove
